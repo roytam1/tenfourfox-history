@@ -14,22 +14,29 @@
  */
 class ForceDiscreteGPUHelperCGL
 {
+#if(0)
     CGLPixelFormatObj mPixelFormatObj;
+#endif
 
 public:
     ForceDiscreteGPUHelperCGL()
     {
+// This doesn't work in 10.4.
+#if(0)
         // the code in this function is taken from Chromium, src/ui/gfx/gl/gl_context_cgl.cc, r122013
         // BSD-style license, (c) The Chromium Authors
         CGLPixelFormatAttribute attribs[1];
         attribs[0] = static_cast<CGLPixelFormatAttribute>(0);
         GLint num_pixel_formats = 0;
         CGLChoosePixelFormat(attribs, &mPixelFormatObj, &num_pixel_formats);
+#endif
     }
 
     ~ForceDiscreteGPUHelperCGL()
     {
+#if(0)
         CGLReleasePixelFormat(mPixelFormatObj);
+#endif
     }
 };
 

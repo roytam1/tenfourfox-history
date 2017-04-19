@@ -42,7 +42,8 @@ try
 }
 catch(ex)
 {
-  expect = '\(InternalError: allocation size overflow|out of memory\)';
+  //expect = '\(InternalError: allocation size overflow|out of memory\)';
+  expect = 'InternalError: allocation size overflow';
   actual = ex + '';
   print(actual);
 }

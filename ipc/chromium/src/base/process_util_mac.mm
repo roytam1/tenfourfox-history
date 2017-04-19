@@ -7,7 +7,7 @@
 
 #import <Cocoa/Cocoa.h>
 #include <crt_externs.h>
-#include <spawn.h>
+//#include <spawn.h>
 #include <sys/wait.h>
 
 #include <string>
@@ -51,6 +51,10 @@ bool LaunchApp(const std::vector<std::string>& argv,
                ChildPrivileges privs,
                bool wait, ProcessHandle* process_handle,
                ProcessArchitecture arch) {
+#if(1)
+  perror("LaunchApp not supported");
+  return false;
+#else
   bool retval = true;
 
   char* argv_copy[argv.size() + 1];
@@ -177,6 +181,7 @@ bool LaunchApp(const std::vector<std::string>& argv,
   }
 
   return retval;
+#endif
 }
 
 bool LaunchApp(const CommandLine& cl,

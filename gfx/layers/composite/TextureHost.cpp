@@ -214,7 +214,7 @@ TextureHost::Create(const SurfaceDescriptor& aDesc,
       return CreateTextureHostOGL(aDesc, aDeallocator, aFlags);
 
     case SurfaceDescriptor::TSurfaceDescriptorGralloc:
-    case SurfaceDescriptor::TSurfaceDescriptorMacIOSurface:
+    // case SurfaceDescriptor::TSurfaceDescriptorMacIOSurface: // unpossible
       if (aBackend == LayersBackend::LAYERS_OPENGL) {
         return CreateTextureHostOGL(aDesc, aDeallocator, aFlags);
       } else {

@@ -29,6 +29,7 @@ VideoRenderFrames::VideoRenderFrames()
 int32_t VideoRenderFrames::AddFrame(const I420VideoFrame& new_frame) {
   const int64_t time_now = TickTime::MillisecondTimestamp();
 
+#if(0)
   // Drop old frames only when there are other frames in the queue, otherwise, a
   // really slow system never renders any frames.
   if (!incoming_frames_.empty() &&
@@ -41,6 +42,7 @@ int32_t VideoRenderFrames::AddFrame(const I420VideoFrame& new_frame) {
                  new_frame.timestamp());
     return -1;
   }
+#endif
 
   if (new_frame.render_time_ms() > time_now + KFutureRenderTimestampMS) {
     WEBRTC_TRACE(kTraceWarning, kTraceVideoRenderer, -1,

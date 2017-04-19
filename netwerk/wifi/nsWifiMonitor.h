@@ -64,6 +64,10 @@ class nsWifiMonitor final : nsIRunnable, nsIWifiMonitor, nsIObserver
 
   nsresult DoScan();
 
+// 10.4Fx
+  nsresult DoScanWithCoreWLAN();
+  nsresult DoScanOld();
+
   nsresult CallWifiListeners(const nsCOMArray<nsWifiAccessPoint> &aAccessPoints,
                              bool aAccessPointsChanged);
 

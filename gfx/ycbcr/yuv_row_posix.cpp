@@ -4,6 +4,9 @@
 
 #include "yuv_row.h"
 #include "mozilla/SSE.h"
+#ifdef TENFOURFOX_VMX
+#include <altivec.h>
+#endif
 
 #define DCHECK(a)
 
@@ -883,6 +886,457 @@ void LinearScaleYUVToRGB32Row(const uint8* y_buf,
   }
 
   LinearScaleYUVToRGB32Row_C(y_buf, u_buf, v_buf, rgb_buf, width, source_dx);
+}
+#elif defined TENFOURFOX_VMX
+/* for TenFourFox, by Cameron Kaiser */
+
+void FastConvertYUVToRGB32Row(const uint8 *y_buf,
+                                const uint8* u_buf,
+                                const uint8* v_buf,
+                                uint8* rgb_buf,
+                                int width) {
+	register vector unsigned char r0;
+	
+	// splat a vector for 6 for the bit shifts
+	register vector unsigned short splat6 = vec_splat_u16(6);
+
+	int edi = 0;
+	int esi = 0;
+	int edx = 0;
+	unsigned int __attribute__ ((aligned(16))) parkit[4];
+	unsigned int *stufit = (unsigned int *)rgb_buf;
+	register vector short mm0, mm0a, mm1, mm2;
+	register vector short mm01, mm0a1, mm11, mm21;
+	register vector unsigned char msq, mask;
+	register vector unsigned char snarf = 
+{ 3, 2, 1, 0, 11, 10, 9, 8, 0, 0, 0, 0, 0, 0, 0, 0 };
+	register vector unsigned char snarf8 =
+{ 3, 2, 1, 0, 11, 10, 9, 8, 7, 6, 5, 4, 15, 14, 13, 12 };
+	register vector unsigned char mergehalf =
+{ 0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23 };
+
+	// damn Google, the table rows are only aligned to *8* bytes!
+	// assume any arbitrary load is misaligned or we get too
+	// branchy in this loop. fortunately, since we are only ever
+	// loading eight bytes we only need to do a single load.
+#define LOADC(x, y, z) \
+	mask = vec_lvsl(0, (unsigned char*)&(kCoefficientsRgbY[z+y])); \
+	msq = vec_ld(0, (unsigned char*)&(kCoefficientsRgbY[z+y])); \
+	x = (vector short)vec_perm(msq, msq, mask);
+
+	while(width >= 4) {
+		// This is probably the best we can do with the table and
+		// output stores aligned the way they are. Do two separate
+		// unaligned loads and perm them into a single vector.
+		// This also unrolls the loop as a side effect, which the PPC
+		// prefers.
+                uint8 u = u_buf[edi++];
+                uint8 v = v_buf[esi++];
+                uint8 y0 = y_buf[edx++];
+                uint8 y1 = y_buf[edx++];
+
+                LOADC(mm0, u, 256);
+                LOADC(mm0a, v, 512);
+                LOADC(mm1, y0, 0);
+                LOADC(mm2, y1, 0);
+
+                u = u_buf[edi++];
+                v = v_buf[esi++];
+                y0 = y_buf[edx++];
+                y1 = y_buf[edx++];
+
+                LOADC(mm01, u, 256);
+                LOADC(mm0a1, v, 512);
+                LOADC(mm11, y0, 0);
+                LOADC(mm21, y1, 0);
+
+                mm0 = (vector short)vec_perm(mm0, mm01, mergehalf);
+                mm0a = (vector short)vec_perm(mm0a, mm0a1, mergehalf);
+                mm1 = (vector short)vec_perm(mm1, mm11, mergehalf);
+                mm2 = (vector short)vec_perm(mm2, mm21, mergehalf);
+
+                mm0 = vec_adds(mm0, mm0a);
+                mm1 = vec_adds(mm0, mm1);
+                mm2 = vec_adds(mm0, mm2);
+
+                mm1 = vec_sra(mm1, splat6);
+                mm2 = vec_sra(mm2, splat6);
+
+		r0 = vec_packsu(mm1, mm2);
+
+		// because we're big endian, we have to permute our
+		// bytes into bgra because we output argb (see YuvPixel
+		// in the C version). at the same time we smush everything
+		// together for a reason you'll see in a minute.
+		r0 = vec_perm(r0, r0, snarf8);
+
+                // there has GOT to be a better way.
+                vec_st(r0, 0, (unsigned char *)parkit);
+                stufit[0] = parkit[0];
+                stufit[1] = parkit[1];
+                stufit[2] = parkit[2];
+                stufit[3] = parkit[3];
+                stufit += 4;
+                width -= 4;
+	}
+
+	while(width >= 2) {
+    		uint8 u = u_buf[edi++];
+    		uint8 v = v_buf[esi++];
+		uint8 y0 = y_buf[edx++];
+		uint8 y1 = y_buf[edx++];
+
+		LOADC(mm0, u, 256);
+		LOADC(mm0a, v, 512);
+		LOADC(mm1, y0, 0);
+		LOADC(mm2, y1, 0);
+
+		mm0 = vec_adds(mm0, mm0a);
+
+		mm1 = vec_adds(mm0, mm1);
+		mm2 = vec_adds(mm0, mm2);
+
+		mm1 = vec_sra(mm1, splat6);
+		mm2 = vec_sra(mm2, splat6);
+
+		r0 = vec_packsu(mm1, mm2);
+
+		r0 = vec_perm(r0, r0, snarf);
+
+		// there has GOT to be a better way to write a half vector.
+		vec_st(r0, 0, (unsigned char *)parkit);
+		stufit[0] = parkit[0];
+		stufit[1] = parkit[1];
+		stufit += 2;
+		width -= 2;
+	}
+
+	if (width) {
+    		uint8 u = u_buf[edi];
+    		uint8 v = v_buf[esi];
+		uint8 y0 = y_buf[edx];
+
+		LOADC(mm0, u, 256);
+		LOADC(mm0a, v, 512);
+		LOADC(mm1, y0, 0);
+
+		mm0 = vec_adds(mm0, mm0a);
+		mm1 = vec_adds(mm1, mm0);
+		mm1 = vec_sra(mm1, splat6);
+		r0 = vec_packsu(mm1, mm1);
+		r0 = vec_perm(r0, r0, snarf);
+		vec_st(r0, 0, (unsigned char *)parkit);
+		stufit[0] = parkit[0];
+	}
+}
+
+void ScaleYUVToRGB32Row(const uint8* y_buf,
+                        const uint8* u_buf,
+                        const uint8* v_buf,
+                        uint8* rgb_buf,
+                        int width,
+                        int source_dx) {
+	// Another simpleminded port of the SSE version.
+	// This is roughly the same as the Fast transform, but with some
+	// extra sexy bits for scaling.
+	register vector unsigned char r0;
+	
+	// splat a vector for 6 for the bit shifts
+	register vector unsigned short splat6 = vec_splat_u16(6);
+
+	unsigned int __attribute__ ((aligned(16))) parkit[4];
+	unsigned int *stufit = (unsigned int *)rgb_buf;
+	register vector short mm0, mm0a, mm1, mm2;
+	register vector short mm01, mm0a1, mm11, mm21;
+	register vector unsigned char msq, mask;
+	register vector unsigned char snarf = 
+{ 3, 2, 1, 0, 11, 10, 9, 8, 0, 0, 0, 0, 0, 0, 0, 0 };
+	register vector unsigned char snarf8 =
+{ 3, 2, 1, 0, 11, 10, 9, 8, 7, 6, 5, 4, 15, 14, 13, 12 };
+	register vector unsigned char mergehalf =
+{ 0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23 };
+
+	// 16.16 fixed point math is used, so we account for it (see C version)
+	int x = 0;
+	while(width >= 4) {
+    		uint8 u = u_buf[x >> 17];
+    		uint8 v = v_buf[x >> 17];
+		uint8 y0 = y_buf[x >> 16];
+		uint8 y1 = y_buf[(x + source_dx) >> 16];
+
+		x += source_dx + source_dx;
+
+                LOADC(mm0, u, 256);
+                LOADC(mm0a, v, 512);
+                LOADC(mm1, y0, 0);
+                LOADC(mm2, y1, 0);
+
+    		u = u_buf[x >> 17];
+    		v = v_buf[x >> 17];
+		y0 = y_buf[x >> 16];
+		y1 = y_buf[(x + source_dx) >> 16];
+
+		x += source_dx + source_dx;
+
+                LOADC(mm01, u, 256);
+                LOADC(mm0a1, v, 512);
+                LOADC(mm11, y0, 0);
+                LOADC(mm21, y1, 0);
+
+                mm0 = (vector short)vec_perm(mm0, mm01, mergehalf);
+                mm0a = (vector short)vec_perm(mm0a, mm0a1, mergehalf);
+                mm1 = (vector short)vec_perm(mm1, mm11, mergehalf);
+                mm2 = (vector short)vec_perm(mm2, mm21, mergehalf);
+
+                mm0 = vec_adds(mm0, mm0a);
+                mm1 = vec_adds(mm0, mm1);
+                mm2 = vec_adds(mm0, mm2);
+
+                mm1 = vec_sra(mm1, splat6);
+                mm2 = vec_sra(mm2, splat6);
+
+		r0 = vec_packsu(mm1, mm2);
+
+		// because we're big endian, we have to permute our
+		// bytes into bgra because we output argb (see YuvPixel
+		// in the C version). at the same time we smush everything
+		// together for a reason you'll see in a minute.
+		r0 = vec_perm(r0, r0, snarf8);
+
+                // there has GOT to be a better way.
+                vec_st(r0, 0, (unsigned char *)parkit);
+                stufit[0] = parkit[0];
+                stufit[1] = parkit[1];
+                stufit[2] = parkit[2];
+                stufit[3] = parkit[3];
+                stufit += 4;
+                width -= 4;
+	}
+
+	while(width >= 2) {
+    		uint8 u = u_buf[x >> 17];
+    		uint8 v = v_buf[x >> 17];
+		uint8 y0 = y_buf[x >> 16];
+		uint8 y1 = y_buf[(x + source_dx) >> 16];
+
+		x += source_dx + source_dx;
+
+		LOADC(mm0, u, 256);
+		LOADC(mm0a, v, 512);
+		LOADC(mm1, y0, 0);
+		LOADC(mm2, y1, 0);
+
+		mm0 = vec_adds(mm0, mm0a);
+
+		mm1 = vec_adds(mm0, mm1);
+		mm2 = vec_adds(mm0, mm2);
+
+		mm1 = vec_sra(mm1, splat6);
+		mm2 = vec_sra(mm2, splat6);
+
+		r0 = vec_packsu(mm1, mm2);
+		r0 = vec_perm(r0, r0, snarf);
+
+		// there has GOT to be a better way.
+		vec_st(r0, 0, (unsigned char *)parkit);
+		stufit[0] = parkit[0];
+		stufit[1] = parkit[1];
+		stufit += 2;
+		width -= 2;
+	}
+
+	if (width) {
+    		uint8 u = u_buf[x >> 17];
+    		uint8 v = v_buf[x >> 17];
+		uint8 y0 = y_buf[x >> 16];
+		LOADC(mm0, u, 256);
+		LOADC(mm0a, v, 512);
+		LOADC(mm1, y0, 0);
+		mm0 = vec_adds(mm0, mm0a);
+		mm1 = vec_adds(mm1, mm0);
+		mm1 = vec_sra(mm1, splat6);
+		r0 = vec_packsu(mm1, mm1);
+		r0 = vec_perm(r0, r0, snarf);
+		vec_st(r0, 0, (unsigned char *)parkit);
+		stufit[0] = parkit[0];
+	}
+}
+
+void LinearScaleYUVToRGB32Row(const uint8* y_buf,
+                              const uint8* u_buf,
+                              const uint8* v_buf,
+                              uint8* rgb_buf,
+                              int width,
+                              int source_dx) {
+	// Aaaaand another one. This one is rather harder to translate
+	// to AltiVec, but we'll give it a go.
+	// Tobias gets a beer here.
+        register vector unsigned char r0;
+        
+        // splat a vector for 6 for the bit shifts
+        register vector unsigned short splat6 = vec_splat_u16(6);
+
+        unsigned int __attribute__ ((aligned(16))) parkit[4];
+        unsigned int *stufit = (unsigned int *)rgb_buf;
+        register vector short mm0, mm0a, mm1, mm2;
+        register vector short mm01, mm0a1, mm11, mm21;
+        register vector unsigned char msq, mask;
+        register vector unsigned char snarf = 
+{ 3, 2, 1, 0, 11, 10, 9, 8, 0, 0, 0, 0, 0, 0, 0, 0 };
+        register vector unsigned char snarf8 =
+{ 3, 2, 1, 0, 11, 10, 9, 8, 7, 6, 5, 4, 15, 14, 13, 12 };
+        register vector unsigned char mergehalf =
+{ 0, 1, 2, 3, 4, 5, 6, 7, 16, 17, 18, 19, 20, 21, 22, 23 };
+
+        // 16.16 fixed point math is used, so we account for it (see C version)
+        int x = 0;
+        if (source_dx >= 0x20000) {
+                x = 32768;
+        }
+        while(width >= 4) {
+                int u0 = u_buf[x >> 17];
+                int u1 = u_buf[(x >> 17) + 1];
+                int v0 = v_buf[x >> 17];
+                int v1 = v_buf[(x >> 17) + 1];
+                int y0 = y_buf[x >> 16];
+                int y1 = y_buf[(x >> 16) + 1];
+                int yy0 = y_buf[(x + source_dx) >> 16];
+                int yy1 = y_buf[((x + source_dx) >> 16) + 1];
+
+                int y_frac = (x & 65535);
+                int uv_frac = ((x >> 1) & 65535);
+                int y = (y_frac * y1 + (y_frac ^ 65535) * y0) >> 16;
+                int yy = (y_frac * yy1 + (y_frac ^ 65535) * yy0) >> 16;
+                int u = (uv_frac * u1 + (uv_frac ^ 65535) * u0) >> 16;
+                int v = (uv_frac * v1 + (uv_frac ^ 65535) * v0) >> 16;
+
+                x += source_dx + source_dx;
+
+                LOADC(mm0, u, 256);
+                LOADC(mm0a, v, 512);
+                LOADC(mm1, y, 0);
+                LOADC(mm2, yy, 0);
+
+                u0 = u_buf[x >> 17];
+                u1 = u_buf[(x >> 17) + 1];
+                v0 = v_buf[x >> 17];
+                v1 = v_buf[(x >> 17) + 1];
+                y0 = y_buf[x >> 16];
+                y1 = y_buf[(x >> 16) + 1];
+                yy0 = y_buf[(x + source_dx) >> 16];
+                yy1 = y_buf[((x + source_dx) >> 16) + 1];
+
+                y_frac = (x & 65535);
+                uv_frac = ((x >> 1) & 65535);
+                y = (y_frac * y1 + (y_frac ^ 65535) * y0) >> 16;
+                yy = (y_frac * yy1 + (y_frac ^ 65535) * yy0) >> 16;
+                u = (uv_frac * u1 + (uv_frac ^ 65535) * u0) >> 16;
+                v = (uv_frac * v1 + (uv_frac ^ 65535) * v0) >> 16;
+
+                x += source_dx + source_dx;
+
+                LOADC(mm01, u, 256);
+                LOADC(mm0a1, v, 512);
+                LOADC(mm11, y, 0);
+                LOADC(mm21, yy, 0);
+
+                mm0 = (vector short)vec_perm(mm0, mm01, mergehalf);
+                mm0a = (vector short)vec_perm(mm0a, mm0a1, mergehalf);
+                mm1 = (vector short)vec_perm(mm1, mm11, mergehalf);
+                mm2 = (vector short)vec_perm(mm2, mm21, mergehalf);
+
+                mm0 = vec_adds(mm0, mm0a);
+                mm1 = vec_adds(mm0, mm1);
+                mm2 = vec_adds(mm0, mm2);
+
+                mm1 = vec_sra(mm1, splat6);
+                mm2 = vec_sra(mm2, splat6);
+
+                r0 = vec_packsu(mm1, mm2);
+
+                // because we're big endian, we have to permute our
+                // bytes into bgra because we output argb (see YuvPixel
+                // in the C version). at the same time we smush everything
+                // together for a reason you'll see in a minute.
+                r0 = vec_perm(r0, r0, snarf8);
+
+                // there has GOT to be a better way.
+                vec_st(r0, 0, (unsigned char *)parkit);
+                stufit[0] = parkit[0];
+                stufit[1] = parkit[1];
+                stufit[2] = parkit[2];
+                stufit[3] = parkit[3];
+                stufit += 4;
+                width -= 4;
+        }
+
+        while(width >= 2) {
+                int u0 = u_buf[x >> 17];
+                int u1 = u_buf[(x >> 17) + 1];
+                int v0 = v_buf[x >> 17];
+                int v1 = v_buf[(x >> 17) + 1];
+                int y0 = y_buf[x >> 16];
+                int y1 = y_buf[(x >> 16) + 1];
+                int yy0 = y_buf[(x + source_dx) >> 16];
+                int yy1 = y_buf[((x + source_dx) >> 16) + 1];
+
+                int y_frac = (x & 65535);
+                int uv_frac = ((x >> 1) & 65535);
+                int y = (y_frac * y1 + (y_frac ^ 65535) * y0) >> 16;
+                int yy = (y_frac * yy1 + (y_frac ^ 65535) * yy0) >> 16;
+                int u = (uv_frac * u1 + (uv_frac ^ 65535) * u0) >> 16;
+                int v = (uv_frac * v1 + (uv_frac ^ 65535) * v0) >> 16;
+
+                x += source_dx + source_dx;
+
+                LOADC(mm0, u, 256);
+                LOADC(mm0a, v, 512);
+                LOADC(mm1, y, 0);
+                LOADC(mm2, yy, 0);
+
+                mm0 = vec_adds(mm0, mm0a);
+
+                mm1 = vec_adds(mm0, mm1);
+                mm2 = vec_adds(mm0, mm2);
+
+                mm1 = vec_sra(mm1, splat6);
+                mm2 = vec_sra(mm2, splat6);
+
+                r0 = vec_packsu(mm1, mm2);
+                r0 = vec_perm(r0, r0, snarf);
+
+                // there has GOT to be a better way.
+                vec_st(r0, 0, (unsigned char *)parkit);
+                stufit[0] = parkit[0];
+                stufit[1] = parkit[1];
+                stufit += 2;
+                width -= 2;
+        }
+
+        if (width) {
+                int u0 = u_buf[x >> 17];
+                int u1 = u_buf[(x >> 17) + 1];
+                int v0 = v_buf[x >> 17];
+                int v1 = v_buf[(x >> 17) + 1];
+                int y0 = y_buf[x >> 16];
+                int y1 = y_buf[(x >> 16) + 1];
+
+                int y_frac = (x & 65535);
+                int uv_frac = ((x >> 1) & 65535);
+                int y = (y_frac * y1 + (y_frac ^ 65535) * y0) >> 16;
+                int u = (uv_frac * u1 + (uv_frac ^ 65535) * u0) >> 16;
+                int v = (uv_frac * v1 + (uv_frac ^ 65535) * v0) >> 16;
+                LOADC(mm0, u, 256);
+                LOADC(mm0a, v, 512);
+                LOADC(mm1, y, 0);
+                mm0 = vec_adds(mm0, mm0a);
+                mm1 = vec_adds(mm1, mm0);
+                mm1 = vec_sra(mm1, splat6);
+                r0 = vec_packsu(mm1, mm1);
+                r0 = vec_perm(r0, r0, snarf);
+                vec_st(r0, 0, (unsigned char *)parkit);
+                stufit[0] = parkit[0];
+        }
 }
 #else
 void FastConvertYUVToRGB32Row(const uint8* y_buf,

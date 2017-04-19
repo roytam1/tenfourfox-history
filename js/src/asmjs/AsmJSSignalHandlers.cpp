@@ -77,6 +77,8 @@ class AutoSetHandlingSignal
     }
 };
 
+#if(0) // bug 881882
+
 #if defined(XP_WIN)
 # define XMM_sig(p,i) ((p)->Xmm##i)
 # define EIP_sig(p) ((p)->Eip)
@@ -1219,10 +1221,12 @@ JitInterruptHandler(int signum, siginfo_t* info, void* context)
         RedirectJitCodeToInterruptCheck(rt, (CONTEXT*)context);
 }
 #endif
+#endif // ASM_JS
 
 bool
 js::EnsureSignalHandlersInstalled(JSRuntime* rt)
 {
+#if(0)
 #if defined(XP_DARWIN) && defined(ASMJS_MAY_USE_SIGNAL_HANDLERS_FOR_OOB)
     // On OSX, each JSRuntime gets its own handler thread.
     if (!rt->asmJSMachExceptionHandler.installed() && !rt->asmJSMachExceptionHandler.install(rt))
@@ -1304,6 +1308,8 @@ js::EnsureSignalHandlersInstalled(JSRuntime* rt)
 
     sResult = true;
     return true;
+#endif // ASM_JS
+    return false;
 }
 
 // JSRuntime::requestInterrupt sets interrupt_ (which is checked frequently by
@@ -1318,6 +1324,7 @@ js::EnsureSignalHandlersInstalled(JSRuntime* rt)
 void
 js::InterruptRunningJitCode(JSRuntime* rt)
 {
+#if(0)
     // If signal handlers weren't installed, then Ion and asm.js emit normal
     // interrupt checks and don't need asynchronous interruption.
     if (!rt->canUseSignalHandlers())
@@ -1355,4 +1362,5 @@ js::InterruptRunningJitCode(JSRuntime* rt)
     pthread_t thread = (pthread_t)rt->ownerThreadNative();
     pthread_kill(thread, sInterruptSignal);
 #endif
+#endif // ASM_JS
 }

@@ -1,3 +1,6 @@
+// |jit-test| error: 666
+throw 666; // this test does not work properly on IonPower due to our stack
+
 // Binary: cache/js-dbg-64-fe4489fb36ab-linux
 // Flags:
 //

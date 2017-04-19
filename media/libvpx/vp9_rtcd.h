@@ -22,6 +22,10 @@
 #include "vp9_rtcd_x86-win32-gcc.h"
 #endif
 
+#elif defined(TENFOURFOX_VMX)
+/* 32 bit PowerPC MacOS on a G4 or G5. */
+#include "vp9_rtcd_tenfourfox_altivec.h"
+
 #elif defined(__APPLE__) && defined(__x86_64__)
 /* 64 bit MacOS. */
 #include "vp9_rtcd_x86_64-darwin9-gcc.h"

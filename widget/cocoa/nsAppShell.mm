@@ -9,6 +9,7 @@
  */
 
 #import <Cocoa/Cocoa.h>
+#include <dlfcn.h>
 
 #include "CustomCocoaEvents.h"
 #include "mozilla/WidgetTraceEvent.h"
@@ -33,7 +34,7 @@
 #include "mozilla/HangMonitor.h"
 #include "GeckoProfiler.h"
 #include "pratom.h"
-#if !defined(RELEASE_BUILD) || defined(DEBUG)
+#if (0) // !defined(RELEASE_BUILD) || defined(DEBUG)
 #include "nsSandboxViolationSink.h"
 #endif
 
@@ -54,6 +55,13 @@ public:
 private:
   ~MacWakeLockListener() {}
 
+#if(1)
+  // Dummy class to make this happy, since 10.4 doesn't support
+  // IOPMAssertions.
+  NS_IMETHOD Callback(const nsAString& aTopic, const nsAString& aState) {
+	return NS_OK;
+  }
+#else
   IOPMAssertionID mAssertionID = kIOPMNullAssertionID;
 
   NS_IMETHOD Callback(const nsAString& aTopic, const nsAString& aState) override {
@@ -90,10 +98,16 @@ private:
     }
     return NS_OK;
   }
+#endif
 }; // MacWakeLockListener
 
 // defined in nsCocoaWindow.mm
 extern int32_t             gXULModalLevel;
+
+#ifndef NS_LEOPARD_AND_LATER
+// defined in nsChildView.mm
+extern uint32_t          gLastModifierState;
+#endif
 
 static bool gAppShellMethodsSwizzled = false;
 
@@ -309,6 +323,20 @@ nsAppShell::Init()
       nsToolkit::SwizzleMethods([NSApplication class], @selector(terminate:),
                                 @selector(nsAppShell_NSApplication_terminate:));
     }
+    // Only Leopard needs this workaround (see bug 396680 and others).
+    // Restored from bug 801601
+    if (nsCocoaFeatures::OnLeopardOrLater() &&
+	!nsCocoaFeatures::OnSnowLeopardOrLater()) {
+      dlopen("/System/Library/Frameworks/Carbon.framework/Frameworks/Print.framework/Versions/Current/Plugins/PrintCocoaUI.bundle/Contents/MacOS/PrintCocoaUI",
+             RTLD_LAZY);
+      Class PDEPluginCallbackClass = ::NSClassFromString(@"PDEPluginCallback");
+      nsresult rv1 = nsToolkit::SwizzleMethods(PDEPluginCallbackClass, @selector(initWithPrintWindowController:),
+                                               @selector(nsAppShell_PDEPluginCallback_initWithPrintWindowController:));
+      if (NS_SUCCEEDED(rv1)) {
+        nsToolkit::SwizzleMethods(PDEPluginCallbackClass, @selector(dealloc),
+                                  @selector(nsAppShell_PDEPluginCallback_dealloc));
+      }
+    }
     gAppShellMethodsSwizzled = true;
   }
 
@@ -322,7 +350,7 @@ nsAppShell::Init()
     CGSSetDebugOptions(0x80000007);
   }
 
-#if !defined(RELEASE_BUILD) || defined(DEBUG)
+#if (0) // !defined(RELEASE_BUILD) || defined(DEBUG)
   if (nsCocoaFeatures::OnMavericksOrLater() &&
       Preferences::GetBool("security.sandbox.mac.track.violations", false)) {
     nsSandboxViolationSink::Start();
@@ -682,7 +710,7 @@ nsAppShell::Exit(void)
 
   mTerminated = true;
 
-#if !defined(RELEASE_BUILD) || defined(DEBUG)
+#if (0) // !defined(RELEASE_BUILD) || defined(DEBUG)
   if (nsCocoaFeatures::OnMavericksOrLater()) {
     nsSandboxViolationSink::Stop();
   }
@@ -846,8 +874,14 @@ nsAppShell::AfterProcessNextEvent(nsIThreadInternal *aThread,
   // to worry about getting an NSInternalInconsistencyException here.
   NSEvent* currentEvent = [NSApp currentEvent];
   if (currentEvent) {
+#ifdef NS_LEOPARD_AND_LATER
     TextInputHandler::sLastModifierState =
       [currentEvent modifierFlags] & NSDeviceIndependentModifierFlagsMask;
+#else
+    gLastModifierState =
+nsCocoaUtils::GetCocoaEventModifierFlags(currentEvent)
+& NSDeviceIndependentModifierFlagsMask;
+#endif
   }
 
   NS_OBJC_END_TRY_ABORT_BLOCK;
@@ -902,3 +936,42 @@ nsAppShell::AfterProcessNextEvent(nsIThreadInternal *aThread,
 }
 
 @end
+
+/* Restored from bug 801601 -- needed for 10.5 */
+@interface NSObject (PDEPluginCallbackMethodSwizzling)
+- (id)nsAppShell_PDEPluginCallback_initWithPrintWindowController:(id)controller;
+- (void)nsAppShell_PDEPluginCallback_dealloc;
+@end
+
+@implementation NSObject (PDEPluginCallbackMethodSwizzling)
+
+// On Leopard, the PDEPluginCallback class in Apple's PrintCocoaUI module
+// fails to retain and release its PMPrintWindowController object.  This
+// causes the PMPrintWindowController to sometimes be deleted prematurely,
+// leading to crashes on attempts to access it.  One example is bug 396680,
+// caused by attempting to call a deleted PMPrintWindowController object's
+// printSettings method.  We work around the problem by hooking the
+// appropriate methods and retaining and releasing the object ourselves.
+// PrintCocoaUI.bundle is a "plugin" of the Carbon framework's Print
+// framework.
+
+- (id)nsAppShell_PDEPluginCallback_initWithPrintWindowController:(id)controller
+{
+  return [self nsAppShell_PDEPluginCallback_initWithPrintWindowController:[controller retain]];
+}
+
+- (void)nsAppShell_PDEPluginCallback_dealloc
+{
+  // Since the PDEPluginCallback class is undocumented (and the OS header
+  // files have no definition for it), we need to use low-level methods to
+  // access its _printWindowController variable.  (object_getInstanceVariable()
+  // is also available in Objective-C 2.0, so this code is 64-bit safe.)
+  id _printWindowController = nil;
+  object_getInstanceVariable(self, "_printWindowController",
+                             (void **) &_printWindowController);
+  [_printWindowController release];
+  [self nsAppShell_PDEPluginCallback_dealloc];
+}
+
+@end
+

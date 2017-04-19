@@ -142,6 +142,7 @@ nsXREDirProvider::SetProfile(nsIFile* aDir, nsIFile* aLocalDir)
   if (NS_FAILED(rv))
     return rv;
 
+#if(0) // Despite it being my patch historically, it doesn't work on 10.4.
 #ifdef XP_MACOSX
   bool same;
   if (NS_SUCCEEDED(aDir->Equals(aLocalDir, &same)) && !same) {
@@ -164,6 +165,7 @@ nsXREDirProvider::SetProfile(nsIFile* aDir, nsIFile* aLocalDir)
       }
     }
   }
+#endif
 #endif
 
   mProfileDir = aDir;

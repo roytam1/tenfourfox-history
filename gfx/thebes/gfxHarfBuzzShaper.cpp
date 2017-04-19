@@ -289,6 +289,14 @@ gfxHarfBuzzShaper::GetGlyphHAdvance(hb_codepoint_t glyph) const
     if (glyph >= uint32_t(mNumLongHMetrics)) {
         glyph = mNumLongHMetrics - 1;
     }
+    
+    if (MOZ_UNLIKELY(mFont->mSpacingKludge && glyph == mFont->GetSpaceGlyph())) {
+        // This is one of the fonts where the spacing went awry,
+        // invariably on an nbsp character that escaped into the run.
+        // Use the value we computed in gfxMacFont for consistency
+        // (TenFourFox issue 355).
+        return FloatToFixed(mFont->GetMetrics(gfxFont::eHorizontal).spaceWidth);
+    }
 
     // glyph must be valid now, because we checked during initialization
     // that mNumLongHMetrics is > 0, and that the metrics table is large enough
@@ -333,10 +341,13 @@ gfxHarfBuzzShaper::HBGetGlyphHAdvance(hb_font_t *font, void *font_data,
 {
     const gfxHarfBuzzShaper::FontCallbackData *fcd =
         static_cast<const gfxHarfBuzzShaper::FontCallbackData*>(font_data);
+// This never happens, so there's no point in doing the work.
+#if(0)
     gfxFont *gfxfont = fcd->mShaper->GetFont();
     if (gfxfont->ProvidesGlyphWidths()) {
         return gfxfont->GetGlyphWidth(*fcd->mDrawTarget, glyph);
     }
+#endif
     return fcd->mShaper->GetGlyphHAdvance(glyph);
 }
 
@@ -1253,7 +1264,7 @@ gfxHarfBuzzShaper::Initialize()
     mInitialized = true;
     mCallbackData.mShaper = this;
 
-    mUseFontGlyphWidths = mFont->ProvidesGlyphWidths();
+    // always false // mUseFontGlyphWidths = mFont->ProvidesGlyphWidths();
 
     if (!sHBFontFuncs) {
         // static function callback pointers, initialized by the first
@@ -1330,13 +1341,13 @@ gfxHarfBuzzShaper::Initialize()
         }
     }
 
-    if (!mUseFontGlyphWidths) {
+    // always false // if (!mUseFontGlyphWidths) {
         // If font doesn't implement GetGlyphWidth, we will be reading
         // the metrics table directly, so make sure we can load it.
         if (!LoadHmtxTable()) {
             return false;
         }
-    }
+    //}
 
     mHBFont = hb_font_create(mHBFace);
     hb_font_set_funcs(mHBFont, sHBFontFuncs, &mCallbackData, nullptr);
@@ -1574,7 +1585,7 @@ gfxHarfBuzzShaper::ShapeText(gfxContext      *aContext,
     return NS_SUCCEEDED(rv);
 }
 
-#define SMALL_GLYPH_RUN 128 // some testing indicates that 90%+ of text runs
+#define SMALL_GLYPH_RUN 256 // some testing indicates that 90%+ of text runs
                             // will fit without requiring separate allocation
                             // for charToGlyphArray
 

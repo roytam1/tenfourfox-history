@@ -45,7 +45,6 @@ UNIFIED_SOURCES += [
     'nsUnicodeToMacRoman.cpp',
     'nsUnicodeToUTF8.cpp',
     'nsUTF8ConverterService.cpp',
-    'nsUTF8ToUnicode.cpp',
 ]
 
 UNIFIED_SOURCES += [
@@ -156,6 +155,12 @@ UNIFIED_SOURCES += [
 if CONFIG['INTEL_ARCHITECTURE']:
     SOURCES += ['nsUTF8ToUnicodeSSE2.cpp']
     SOURCES['nsUTF8ToUnicodeSSE2.cpp'].flags += CONFIG['SSE2_FLAGS']
+
+if CONFIG['TENFOURFOX_VMX']:
+    SOURCES += ['nsUTF8ToUnicode.cpp']
+    SOURCES['nsUTF8ToUnicode.cpp'].flags += ['-maltivec']
+else:
+    UNIFIED_SOURCES += ['nsUTF8ToUnicode.cpp']
 
 LOCAL_INCLUDES += [
     'ucvcn',

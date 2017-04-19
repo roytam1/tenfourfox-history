@@ -256,12 +256,14 @@ GLBlitHelper::InitTexQuadProgram(BlitType target)
         fragShaderPtr = &mTexYUVPlanarBlit_FragShader;
         fragShaderSource = kTexYUVPlanarBlit_FragShaderSource;
         break;
+#if(0)
 #ifdef XP_MACOSX
     case ConvertMacIOSurfaceImage:
         programPtr = &mTexNV12PlanarBlit_Program;
         fragShaderPtr = &mTexNV12PlanarBlit_FragShader;
         fragShaderSource = kTexNV12PlanarBlit_FragShaderSource;
         break;
+#endif
 #endif
     default:
         return false;
@@ -418,6 +420,7 @@ GLBlitHelper::InitTexQuadProgram(BlitType target)
                 break;
             }
             case ConvertMacIOSurfaceImage: {
+#if(0)
 #ifdef XP_MACOSX
                 GLint texY = mGL->fGetUniformLocation(program, "uYTexture");
                 GLint texCbCr = mGL->fGetUniformLocation(program, "uCbCrTexture");
@@ -432,6 +435,7 @@ GLBlitHelper::InitTexQuadProgram(BlitType target)
 
                 mGL->fUniform1i(texY, Channel_Y);
                 mGL->fUniform1i(texCbCr, Channel_Cb);
+#endif
 #endif
                 break;
             }
@@ -780,6 +784,7 @@ GLBlitHelper::BlitPlanarYCbCrImage(layers::PlanarYCbCrImage* yuvImage)
 bool
 GLBlitHelper::BlitMacIOSurfaceImage(layers::MacIOSurfaceImage* ioImage)
 {
+#if(0)
     ScopedBindTextureUnit boundTU(mGL, LOCAL_GL_TEXTURE0);
     MacIOSurface* surf = ioImage->GetSurface();
 
@@ -813,6 +818,7 @@ GLBlitHelper::BlitMacIOSurfaceImage(layers::MacIOSurfaceImage* ioImage)
     }
 
     mGL->fDeleteTextures(2, textures);
+#endif
     return true;
 }
 #endif
@@ -852,11 +858,13 @@ GLBlitHelper::BlitImageToFramebuffer(layers::Image* srcImage,
         srcOrigin = srcImage->AsEGLImageImage()->GetOriginPos();
         break;
 #endif
+#if(0)
 #ifdef XP_MACOSX
     case ImageFormat::MAC_IOSURFACE:
         type = ConvertMacIOSurfaceImage;
         srcOrigin = OriginPos::TopLeft;
         break;
+#endif
 #endif
 
     default:
@@ -893,9 +901,11 @@ GLBlitHelper::BlitImageToFramebuffer(layers::Image* srcImage,
         return BlitEGLImageImage(static_cast<layers::EGLImageImage*>(srcImage));
 #endif
 
+#if(0)
 #ifdef XP_MACOSX
     case ConvertMacIOSurfaceImage:
         return BlitMacIOSurfaceImage(srcImage->AsMacIOSurfaceImage());
+#endif
 #endif
 
     default:

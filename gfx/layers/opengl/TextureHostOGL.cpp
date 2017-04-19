@@ -79,6 +79,7 @@ CreateTextureHostOGL(const SurfaceDescriptor& aDesc,
       break;
     }
 
+#if(0)
 #ifdef XP_MACOSX
     case SurfaceDescriptor::TSurfaceDescriptorMacIOSurface: {
       const SurfaceDescriptorMacIOSurface& desc =
@@ -86,6 +87,7 @@ CreateTextureHostOGL(const SurfaceDescriptor& aDesc,
       result = new MacIOSurfaceTextureHostOGL(aFlags, desc);
       break;
     }
+#endif
 #endif
 
 #ifdef MOZ_WIDGET_GONK

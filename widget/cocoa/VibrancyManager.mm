@@ -6,7 +6,9 @@
 
 #include "VibrancyManager.h"
 #include "nsChildView.h"
+#if(0)
 #import <objc/message.h>
+#endif
 
 using namespace mozilla;
 
@@ -127,6 +129,8 @@ VibrancyManager::VibrancyFontSmoothingBackgroundColorForType(VibrancyType aType)
   return [NSColor clearColor];
 }
 
+// 10.4 no has.
+#if(0)
 static void
 DrawRectNothing(id self, SEL _cmd, NSRect aRect)
 {
@@ -192,6 +196,7 @@ AppearanceForVibrancyType(VibrancyType aType)
                                      withObject:@"NSAppearanceNameVibrantDark"];
   }
 }
+#endif
 
 #if !defined(MAC_OS_X_VERSION_10_10) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_10
 enum {
@@ -252,6 +257,8 @@ enum {
 NSView*
 VibrancyManager::CreateEffectView(VibrancyType aType, NSRect aRect)
 {
+return nullptr;
+#if(0)
   static Class EffectViewClassWithoutForegroundVibrancy = CreateEffectViewClass(NO);
   static Class EffectViewClassWithForegroundVibrancy = CreateEffectViewClass(YES);
 
@@ -279,6 +286,7 @@ VibrancyManager::CreateEffectView(VibrancyType aType, NSRect aRect)
   }
 
   return effectView;
+#endif
 }
 
 static bool

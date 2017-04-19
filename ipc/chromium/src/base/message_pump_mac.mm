@@ -655,7 +655,7 @@ void MessagePumpNSApplication::DoRun(Delegate* delegate) {
 
   // TODO(dmaclach): Get rid of this gratuitous sharedApplication.
   // Tests should be setting up their applications on their own.
-  [CrApplication sharedApplication];
+  //[CrApplication sharedApplication];
 
   if (![NSApp isRunning]) {
     running_own_loop_ = false;
@@ -732,17 +732,27 @@ void MessagePumpNSApplication::Quit() {
 // before it sends the event throught the event handling mechanism, and
 // returning it to its previous value once the event has been sent.
 NSAutoreleasePool* MessagePumpNSApplication::CreateAutoreleasePool() {
+#if(0)
   NSAutoreleasePool* pool = nil;
   DCHECK([NSApp isKindOfClass:[CrApplication class]]);
   if (![static_cast<CrApplication*>(NSApp) isHandlingSendEvent]) {
     pool = MessagePumpCFRunLoopBase::CreateAutoreleasePool();
   }
   return pool;
+#else
+  perror("MessagePumpNSApplication::CreateAutoreleasePool: crash imminent");
+  return nil;
+#endif
 }
 
 // static
+// 10.4 does not have isMainThread, so we simulate it, assuming that the
+// first thread through will be the main thread, and then others will not.
 MessagePump* MessagePumpMac::Create() {
-  if ([NSThread isMainThread]) {
+  static int threads_created = 0;
+  //if ([NSThread isMainThread]) {
+  if (!threads_created) {
+    threads_created++;
     return new MessagePumpNSApplication;
   }
 

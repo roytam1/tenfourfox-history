@@ -41,7 +41,8 @@ __NS_InvokeByIndex:
 	mr	r4,r6
 
 	stwu	r1,-24(r1)	
-	bl	L_invoke_count_words$stub
+#	bl	L_invoke_count_words$stub
+	bl	_invoke_count_words
 	lwz	r1,0(r1)
 
 # prepare args for 'invoke_copy_to_stack' call
@@ -60,45 +61,48 @@ __NS_InvokeByIndex:
 	
 # create "temporary" stack frame for _invoke_copy_to_stack to operate in.
 	stwu	r1,-40(r1)
-	bl	L_invoke_copy_to_stack$stub
+#	bl	L_invoke_copy_to_stack$stub
+	bl	_invoke_copy_to_stack
 # remove temporary stack frame.
 	lwz	r1,0(r1)
 
 	lfd	f1,0(r31)				
 	lfd	f2,8(r31)				
 	lfd	f3,16(r31)				
+	lwz	r3,168(r31)             ; that
 	lfd	f4,24(r31)				
 	lfd	f5,32(r31)				
 	lfd	f6,40(r31)				
 	lfd	f7,48(r31)				
+	lwz	r5,172(r31)             ; methodIndex
+	lwz	r4,0(r3)                ; get vTable from 'that'
 	lfd	f8,56(r31)				
 	lfd	f9,64(r31)				
 	lfd	f10,72(r31)				
+	slwi	r5,r5,2                 ; methodIndex * 4
 	lfd	f11,80(r31)				
 	lfd	f12,88(r31)				
 	lfd	f13,96(r31)				
 	
-	lwz	r3,168(r31)             ; that
-	lwz	r4,0(r3)                ; get vTable from 'that'
-	lwz	r5,172(r31)             ; methodIndex
-	slwi	r5,r5,2                 ; methodIndex * 4
 	lwzx	r12,r5,r4               ; get function pointer
 
-	lwz	r4,28(r1)
-	lwz	r5,32(r1)
 	lwz	r6,36(r1)
 	lwz	r7,40(r1)
+	mtctr r12
+	lwz	r4,28(r1)
+	lwz	r5,32(r1)
 	lwz	r8,44(r1)
 	lwz	r9,48(r1)
 	lwz	r10,52(r1)
 	
-	mtlr	r12
-	blrl
+#	mtlr	r12
+#	blrl
+	bctrl
 	
 	mr      r1,r31
 	lwz	r0,152(r1)
-	addi    r1,r1,144
 	mtlr    r0
+	addi    r1,r1,144
 	lwz     r31,-4(r1)
 
 	blr

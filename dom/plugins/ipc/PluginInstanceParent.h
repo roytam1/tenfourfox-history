@@ -432,6 +432,7 @@ private:
     WNDPROC            mPluginWndProc;
     bool               mNestedEventState;
 #endif // defined(XP_WIN)
+#if(0) // 10.4 no haz, beyotch.
 #if defined(MOZ_WIDGET_COCOA)
 private:
     Shmem                  mShSurface; 
@@ -441,6 +442,7 @@ private:
     RefPtr<MacIOSurface> mIOSurface;
     RefPtr<MacIOSurface> mFrontIOSurface;
 #endif // definied(MOZ_WIDGET_COCOA)
+#endif
 
     // ObjectFrame layer wrapper
     RefPtr<gfxASurface>    mFrontSurface;

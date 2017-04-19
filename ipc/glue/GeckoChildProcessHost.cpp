@@ -208,6 +208,13 @@ nsresult GeckoChildProcessHost::GetArchitecturesForBinary(const char *path, uint
 {
   *result = 0;
 
+  // Because 10.4Fx only runs PPC plugins, and we don't support plugins, we'll
+  // just make this always say PPC.
+  *result |= base::PROCESS_ARCH_PPC;
+  return NS_OK;
+
+#if(0)
+
 #ifdef MOZ_WIDGET_COCOA
   CFURLRef url = ::CFURLCreateFromFileSystemRepresentation(kCFAllocatorDefault,
                                                            (const UInt8*)path,
@@ -250,10 +257,12 @@ nsresult GeckoChildProcessHost::GetArchitecturesForBinary(const char *path, uint
 #else
   return NS_ERROR_NOT_IMPLEMENTED;
 #endif
+#endif
 }
 
 uint32_t GeckoChildProcessHost::GetSupportedArchitecturesForProcessType(GeckoProcessType type)
 {
+#if(0)
 #ifdef MOZ_WIDGET_COCOA
   if (type == GeckoProcessType_Plugin) {
 
@@ -271,6 +280,7 @@ uint32_t GeckoChildProcessHost::GetSupportedArchitecturesForProcessType(GeckoPro
     return pluginContainerArchs;
   }
 #endif
+#endif // force PPC to be returned from ::GetCurrentProcessArchitecture
 
   return base::GetCurrentProcessArchitecture();
 }
@@ -608,6 +618,10 @@ MaybeAddNsprLogFileAccess(std::vector<std::wstring>& aAllowedFilesReadWrite)
 bool
 GeckoChildProcessHost::PerformAsyncLaunchInternal(std::vector<std::string>& aExtraOpts, base::ProcessArchitecture arch)
 {
+#if(1)
+  NS_NOTREACHED("*** PerformAsyncLaunchInternal not implemented ***");
+  return false;
+#else
   // We rely on the fact that InitializeChannel() has already been processed
   // on the IO thread before this point is reached.
   if (!GetChannel()) {
@@ -1032,6 +1046,7 @@ GeckoChildProcessHost::PerformAsyncLaunchInternal(std::vector<std::string>& aExt
   }
 
   return true;
+#endif
 }
 
 void

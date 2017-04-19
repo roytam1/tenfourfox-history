@@ -51,6 +51,8 @@ ifndef WARNING_CFLAGS
         ifeq (,$(filter 0 1 2 3 4,$(word 1,$(CC_VERSION))))
           NSS_ENABLE_WERROR = 1
         endif
+        # Our TenFourFox mozconfigs whack NSS here, so just assume WERROR.
+        NSS_ENABLE_WERROR = 1
         ifndef NSS_ENABLE_WERROR
           $(warning Unable to find gcc 4.8 or greater, disabling -Werror)
           NSS_ENABLE_WERROR = 0

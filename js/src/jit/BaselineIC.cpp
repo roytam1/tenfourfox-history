@@ -779,6 +779,7 @@ ICToBool_Int32::Compiler::generateStubCode(MacroAssembler& masm)
     Label failure;
     masm.branchTestInt32(Assembler::NotEqual, R0, &failure);
 
+#ifndef JS_CODEGEN_PPC_OSX
     Label ifFalse;
     masm.branchTestInt32Truthy(false, R0, &ifFalse);
 
@@ -787,6 +788,14 @@ ICToBool_Int32::Compiler::generateStubCode(MacroAssembler& masm)
 
     masm.bind(&ifFalse);
     masm.moveValue(BooleanValue(false), R0);
+#else
+    // Convert int32 to 0|1, and tag it as a boolean.
+    // CWG implies that the optimal form stores to an intermediate register.
+    masm.addic(r0, R0.payloadReg(), -1);
+    masm.subfe(r12, r0, R0.payloadReg());
+    masm.x_li32(R0.typeReg(), JSVAL_TAG_BOOLEAN);
+    masm.x_mr(R0.payloadReg(), r12);
+#endif
     EmitReturnFromIC(masm);
 
     // Failure case - jump to next stub
@@ -807,6 +816,7 @@ ICToBool_String::Compiler::generateStubCode(MacroAssembler& masm)
     Label failure;
     masm.branchTestString(Assembler::NotEqual, R0, &failure);
 
+#ifndef JS_CODEGEN_PPC_OSX
     Label ifFalse;
     masm.branchTestStringTruthy(false, R0, &ifFalse);
 
@@ -815,6 +825,14 @@ ICToBool_String::Compiler::generateStubCode(MacroAssembler& masm)
 
     masm.bind(&ifFalse);
     masm.moveValue(BooleanValue(false), R0);
+#else
+    // Get the length word, turn that into 0|1, and tag it as a boolean.
+    masm.lwz(r0, R0.payloadReg(), JSString::offsetOfLength());
+    // Now treat as an int32.
+    masm.addic(r12, r0, -1);
+    masm.x_li32(R0.typeReg(), JSVAL_TAG_BOOLEAN);
+    masm.subfe(R0.payloadReg(), r12, r0);
+#endif
     EmitReturnFromIC(masm);
 
     // Failure case - jump to next stub
@@ -858,6 +876,7 @@ ICToBool_Double::Compiler::generateStubCode(MacroAssembler& masm)
     Label failure, ifTrue;
     masm.branchTestDouble(Assembler::NotEqual, R0, &failure);
     masm.unboxDouble(R0, FloatReg0);
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestDoubleTruthy(true, FloatReg0, &ifTrue);
 
     masm.moveValue(BooleanValue(false), R0);
@@ -865,6 +884,17 @@ ICToBool_Double::Compiler::generateStubCode(MacroAssembler& masm)
 
     masm.bind(&ifTrue);
     masm.moveValue(BooleanValue(true), R0);
+#else
+    // NaN evaluates to false, dammit, so we have to use the FPU for the
+    // comparison instead of working directly on the double ourselves.
+    MOZ_ASSERT(fpTempRegister != FloatReg0); // gawd, if it is, what are we doing?!
+    masm.zeroDouble(fpTempRegister);
+    masm.fcmpu(fpTempRegister, FloatReg0);
+    masm.ma_cr_set(Assembler::DoubleEqualOrUnordered, R0.payloadReg());
+    masm.x_li32(R0.typeReg(), JSVAL_TAG_BOOLEAN);
+    // Flip the sign (remember: equal to zero OR NaN is FALSE).
+    masm.xori(R0.payloadReg(), R0.payloadReg(), 1);
+#endif
     EmitReturnFromIC(masm);
 
     // Failure case - jump to next stub
@@ -2217,8 +2247,17 @@ ICGetElem_String::Compiler::generateStubCode(MacroAssembler& masm)
     MOZ_ASSERT(engine_ == Engine::Baseline);
 
     Label failure;
+#ifndef JS_CPU_PPC_OSX
     masm.branchTestString(Assembler::NotEqual, R0, &failure);
     masm.branchTestInt32(Assembler::NotEqual, R1, &failure);
+#else
+    masm.x_li32(r0, JSVAL_TAG_STRING);
+    masm.x_li32(r12, JSVAL_TAG_INT32);
+    masm.xor_(r0, R0.typeReg(), r0);
+    masm.xor_(r12, R1.typeReg(), r12);
+    masm.or__rc(r0, r0, r12);
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     AllocatableGeneralRegisterSet regs(availableGeneralRegs(2));
     Register scratchReg = regs.takeAny();
@@ -2267,8 +2306,17 @@ ICGetElem_Dense::Compiler::generateStubCode(MacroAssembler& masm)
     MOZ_ASSERT(engine_ == Engine::Baseline);
 
     Label failure;
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestObject(Assembler::NotEqual, R0, &failure);
     masm.branchTestInt32(Assembler::NotEqual, R1, &failure);
+#else
+    masm.x_li32(r0, JSVAL_TAG_OBJECT);
+    masm.x_li32(r12, JSVAL_TAG_INT32);
+    masm.xor_(r0, R0.typeReg(), r0);
+    masm.xor_(r12, R1.typeReg(), r12);
+    masm.or__rc(r0, r0, r12);
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     AllocatableGeneralRegisterSet regs(availableGeneralRegs(2));
     Register scratchReg = regs.takeAny();
@@ -2494,6 +2542,7 @@ ICGetElem_Arguments::Compiler::generateStubCode(MacroAssembler& masm)
     AllocatableGeneralRegisterSet regs(availableGeneralRegs(2));
     Register scratchReg = regs.takeAny();
 
+#if(0)
     // Guard on input being an arguments object.
     masm.branchTestObject(Assembler::NotEqual, R0, &failure);
     Register objReg = masm.extractObject(R0, ExtractTemp0);
@@ -2501,6 +2550,19 @@ ICGetElem_Arguments::Compiler::generateStubCode(MacroAssembler& masm)
 
     // Guard on index being int32
     masm.branchTestInt32(Assembler::NotEqual, R1, &failure);
+#else
+    // Test object and int32 guards simultaneously.
+    masm.x_li32(r0, JSVAL_TAG_OBJECT);
+    masm.x_li32(r12, JSVAL_TAG_INT32);
+    masm.xor_(r0, R0.typeReg(), r0);
+    masm.xor_(r12, R1.typeReg(), r12);
+    masm.or__rc(r0, r0, r12);
+    masm.bc(Assembler::NonZero, &failure);
+    
+    // Guard on input being an arguments object, which we can't further optimize.
+    Register objReg = masm.extractObject(R0, ExtractTemp0);
+    masm.branchTestObjClass(Assembler::NotEqual, objReg, scratchReg, clasp, &failure);
+#endif
     Register idxReg = masm.extractInt32(R1, ExtractTemp1);
 
     // Get initial ArgsObj length value.
@@ -2982,8 +3044,17 @@ ICSetElem_DenseOrUnboxedArray::Compiler::generateStubCode(MacroAssembler& masm)
     // R1 = key
     // Stack = { ... rhs-value, <return-addr>? }
     Label failure, failurePopR0;
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestObject(Assembler::NotEqual, R0, &failure);
     masm.branchTestInt32(Assembler::NotEqual, R1, &failure);
+#else
+    masm.x_li32(r0, JSVAL_TAG_OBJECT);
+    masm.x_li32(r12, JSVAL_TAG_INT32);
+    masm.xor_(r0, R0.typeReg(), r0);
+    masm.xor_(r12, R1.typeReg(), r12);
+    masm.or__rc(r0, r0, r12);
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     AllocatableGeneralRegisterSet regs(availableGeneralRegs(2));
     Register scratchReg = regs.takeAny();
@@ -3165,8 +3236,17 @@ ICSetElemDenseOrUnboxedArrayAddCompiler::generateStubCode(MacroAssembler& masm)
     // R1 = key
     // Stack = { ... rhs-value, <return-addr>? }
     Label failure, failurePopR0, failureUnstow;
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestObject(Assembler::NotEqual, R0, &failure);
     masm.branchTestInt32(Assembler::NotEqual, R1, &failure);
+#else
+    masm.x_li32(r0, JSVAL_TAG_OBJECT);
+    masm.x_li32(r12, JSVAL_TAG_INT32);
+    masm.xor_(r0, R0.typeReg(), r0);
+    masm.xor_(r12, R1.typeReg(), r12);
+    masm.or__rc(r0, r0, r12);
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     AllocatableGeneralRegisterSet regs(availableGeneralRegs(2));
     Register scratchReg = regs.takeAny();

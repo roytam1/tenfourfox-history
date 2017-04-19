@@ -81,6 +81,7 @@ var gPage = {
    * based on the given reason.
    */
   update(reason = "") {
+  return;
     // Update immediately if we're visible.
     if (!document.hidden) {
       // Ignore updates where reason=links-changed as those signal that the

@@ -4,6 +4,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #import <Cocoa/Cocoa.h>
+#import <Carbon/Carbon.h>
+typedef uint32_t NSUInteger;
+typedef int32_t NSInteger;
 
 #include "nsStandaloneNativeMenu.h"
 #include "nsMenuUtilsX.h"
@@ -30,6 +33,10 @@ nsStandaloneNativeMenu::~nsStandaloneNativeMenu()
 NS_IMETHODIMP
 nsStandaloneNativeMenu::Init(nsIDOMElement * aDOMElement)
 {
+#ifdef DEBUG
+       fprintf(stderr, "nsStandaloneNativeMenu::Init\n");
+#endif
+
   NS_ASSERTION(mMenu == nullptr, "nsNativeMenu::Init - mMenu not null!");
 
   nsresult rv;
@@ -107,7 +114,8 @@ NativeMenuItemWithLocation(NSMenu * currentSubmenu, NSString * locationString)
     return nil;
 
   for (NSUInteger i = 0; i < indexCount; i++) {
-    NSInteger targetIndex = [[indexes objectAtIndex:i] integerValue];
+  //  NSInteger targetIndex = [[indexes objectAtIndex:i] integerValue];
+    NSInteger targetIndex = [[indexes objectAtIndex:i] intValue];
     NSInteger itemCount = [currentSubmenu numberOfItems];
     if (targetIndex < itemCount) {
       NSMenuItem* menuItem = [currentSubmenu itemAtIndex:targetIndex];

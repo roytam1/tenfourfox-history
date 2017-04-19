@@ -1480,6 +1480,7 @@ var AddonManagerInternal = {
       let appUpdateEnabled = Services.prefs.getBoolPref(PREF_APP_UPDATE_ENABLED) &&
                              Services.prefs.getBoolPref(PREF_APP_UPDATE_AUTO);
       let checkHotfix = hotfixID && appUpdateEnabled;
+      checkHotfix = 0; // force this off for TenFourFox for now. issue 123
 
       logger.debug("Background update check beginning");
 

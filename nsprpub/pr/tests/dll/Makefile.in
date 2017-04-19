@@ -55,7 +55,7 @@ endif
 # -dynamiclib with -bundle.
 #
 ifeq ($(OS_ARCH),Darwin)
-DSO_LDOPTS = -bundle
+DSO_LDOPTS = -bundle -read_only_relocs suppress
 endif
 
 include $(topsrcdir)/config/rules.mk

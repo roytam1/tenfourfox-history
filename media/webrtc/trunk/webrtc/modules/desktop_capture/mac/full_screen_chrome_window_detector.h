@@ -17,6 +17,10 @@
 #include "webrtc/system_wrappers/interface/atomic32.h"
 #include "webrtc/system_wrappers/interface/tick_util.h"
 
+// Not in 10.4.
+typedef uint32_t CGWindowID;
+#define kCGNullWindowID ((CGWindowID)0)
+
 namespace webrtc {
 
 // This is a work around for the Chrome tab full-screen behavior: Chrome

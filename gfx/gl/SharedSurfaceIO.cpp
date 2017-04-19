@@ -1,3 +1,4 @@
+#if(0)
 /* -*- Mode: c++; c-basic-offset: 4; indent-tabs-mode: nil; tab-width: 40; -*- */
 /* This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -246,3 +247,5 @@ SurfaceFactory_IOSurface::CreateShared(const gfx::IntSize& size)
 
 } // namespace gl
 } // namespace mozilla
+
+#endif

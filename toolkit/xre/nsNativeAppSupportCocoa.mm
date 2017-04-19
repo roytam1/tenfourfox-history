@@ -79,6 +79,9 @@ nsNativeAppSupportCocoa::Enable()
 
 NS_IMETHODIMP nsNativeAppSupportCocoa::Start(bool *_retval)
 {
+// Up yours, Mozilla. Work around bug 850408.
+// Let the operating system sort this out from the bundle plist.
+#if(0)
   int major, minor, bugfix;
   nsCocoaFeatures::GetSystemVersion(major, minor, bugfix);
 
@@ -93,6 +96,9 @@ NS_IMETHODIMP nsNativeAppSupportCocoa::Start(bool *_retval)
     NSLog(@"Minimum OS version requirement not met!");
     return NS_OK;
   }
+#else
+  NS_OBJC_BEGIN_TRY_ABORT_BLOCK_NSRESULT;
+#endif
 
   *_retval = true;
   return NS_OK;

@@ -126,6 +126,7 @@ allocation_fail:
 
 void vp8_setup_version(VP8_COMMON *cm)
 {
+#if(0)
     switch (cm->version)
     {
     case 0:
@@ -160,6 +161,12 @@ void vp8_setup_version(VP8_COMMON *cm)
         cm->full_pixel = 0;
         break;
     }
+#else
+    cm->no_lpf = 1;
+    cm->filter_type = SIMPLE_LOOPFILTER;
+    cm->use_bilinear_mc_filter = 0;
+    cm->full_pixel = (cm->version == 3) ? 1 : 0;
+#endif
 }
 void vp8_create_common(VP8_COMMON *oci)
 {
@@ -169,8 +176,13 @@ void vp8_create_common(VP8_COMMON *oci)
     vp8_default_bmode_probs(oci->fc.bmode_prob);
 
     oci->mb_no_coeff_skip = 1;
+#if(0)
     oci->no_lpf = 0;
     oci->filter_type = NORMAL_LOOPFILTER;
+#else
+    oci->no_lpf = 1;
+    oci->filter_type = SIMPLE_LOOPFILTER;
+#endif
     oci->use_bilinear_mc_filter = 0;
     oci->full_pixel = 0;
     oci->multi_token_partition = ONE_PARTITION;

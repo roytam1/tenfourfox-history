@@ -24,14 +24,18 @@
    OTHER DEALINGS IN THE SOFTWARE.
    ----------------------------------------------------------------------- */
 
+/* 64 bit compilation not yet supported in TenFourFox. */
+#undef __ppc64__
+
 #define LIBFFI_ASM
 #if defined(__ppc64__)
+#error TenFourFox does not yet support 64 bit compilation!
 #define MODE_CHOICE(x, y) y
 #else
 #define MODE_CHOICE(x, y) x
 #endif
 
-#define machine_choice	MODE_CHOICE(ppc7400,ppc64)
+#define machine_choice	MODE_CHOICE(ppc750,ppc64)
 
 ; Define some pseudo-opcodes for size-independent load & store of GPRs ...
 #define lgu		MODE_CHOICE(lwzu, ldu)
@@ -118,11 +122,13 @@ LCFI1:
 	mr	r29,r7	/* function address,  */
 	mr	r28,r8	/* our AP.  */
 LCFI2:
+	mtctr	r12 /* r12 holds address of _ffi_prep_args.  */
+
 	/* Call ffi_prep_args. r3 = extended cif, r4 = stack ptr copy.  */
 	mr	r4,r1
 	li	r9,0
 
-	mtctr	r12 /* r12 holds address of _ffi_prep_args.  */
+	nop
 	bctrl
 
 #if !defined(POWERPC_DARWIN)
@@ -168,9 +174,7 @@ L1:
 
 L2:
 	mr	r12,r29	/* Put the target address in r12 as specified.  */
-	mtctr  	r12
-	nop
-	nop
+	/* CTR already has the value of r29 */
 
 	/* Make the call.  */
 	bctrl

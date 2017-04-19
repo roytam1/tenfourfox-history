@@ -389,6 +389,7 @@ nsMenuX* nsMenuBarX::GetXULHelpMenu()
 // This resolves bugs 489196 and 539317.
 void nsMenuBarX::SetSystemHelpMenu()
 {
+  if (!nsCocoaFeatures::OnSnowLeopardOrLater()) return; // not on 10.4 and 10.5
   nsMenuX* xulHelpMenu = GetXULHelpMenu();
   if (xulHelpMenu) {
     NSMenu* helpMenu = (NSMenu*)xulHelpMenu->NativeData();
@@ -510,7 +511,16 @@ char nsMenuBarX::GetLocalizedAccelKey(const char *shortcutID)
 /* static */
 void nsMenuBarX::ResetNativeApplicationMenu()
 {
+#if(0)
+// Hmmm. removeAllItems appears to be 10.6 specific.
   [sApplicationMenu removeAllItems];
+#else
+// but we need this (see bug 1151345), so ...
+  uint32_t currentCount = [sApplicationMenu numberOfItems];
+  for (uint32_t i=0; i<currentCount; i++) {
+    [sApplicationMenu removeItemAtIndex:0];
+  }
+#endif
   [sApplicationMenu release];
   sApplicationMenu = nil;
   sApplicationMenuIsFallback = NO;
@@ -915,6 +925,11 @@ static BOOL gMenuItemsExecuteCommands = YES;
     return YES;
   }
 
+// Shortcut this logic for 10.4, it seems to be required for key combinations
+// to be handled properly at all. We can't return no; the event gets handled
+// twice. -- Cameron
+    return [super performKeyEquivalent:theEvent];
+
   // Return NO so that we can handle the event via NSView's "keyDown:".
   return NO;
 }
@@ -1074,10 +1089,19 @@ static BOOL gMenuItemsExecuteCommands = YES;
   return newItem;
 }
 
+struct objc10_object {
+	Class	isa;
+};
+
 - (void) _overrideClassOfMenuItem:(NSMenuItem *)menuItem
 {
   if ([menuItem class] == [NSMenuItem class])
+#ifdef NS_LEOPARD_AND_LATER
     object_setClass(menuItem, [GeckoServicesNSMenuItem class]);
+#else
+    ((struct objc10_object *)menuItem)->isa = [GeckoServicesNSMenuItem class];
+#endif
+
 }
 
 @end

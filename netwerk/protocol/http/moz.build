@@ -27,6 +27,7 @@ EXPORTS += [
     'nsHttpHeaderArray.h',
     'nsHttpRequestHead.h',
     'nsHttpResponseHead.h',
+    'OptimizedFor.h',
 ]
 
 EXPORTS.mozilla.net += [

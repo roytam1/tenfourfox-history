@@ -8,6 +8,17 @@
 #import "mozTableAccessible.h"
 #import "nsCocoaUtils.h"
 
+/* Stubs for 10.4 SDK */
+#define numberWithInteger numberWithInt
+#define numberWithUnsignedInteger numberWithUnsignedInt
+#define __IntToNSString(x) ([NSString stringWithFormat:@"%i", x])
+#define NSAccessibilityRowIndexRangeAttribute @"AXRowIndexRange"
+#define NSAccessibilityColumnIndexRangeAttribute @"AXColumnIndexRange"
+#define NSAccessibilityRowHeaderUIElementsAttribute @"AXRowHeaderUIElements"
+#define NSAccessibilityColumnHeaderUIElementsAttribute @"AXColumnHeaderUIElements"
+#define NSAccessibilityRowCountAttribute @"AXRowCount"
+#define NSAccessibilityColumnCountAttribute @"AXColumnCount"
+
 @implementation mozTablePartAccessible
 - (BOOL)isLayoutTablePart;
 {
@@ -68,10 +79,17 @@
 {
   if (AccessibleWrap* accWrap = [self getGeckoAccessible]) {
     TableAccessible* table = accWrap->AsTable();
+#if(0)
     if ([attribute isEqualToString:NSAccessibilityRowCountAttribute])
       return @(table->RowCount());
     if ([attribute isEqualToString:NSAccessibilityColumnCountAttribute])
       return @(table->ColCount());
+#else
+    if ([attribute isEqualToString:NSAccessibilityRowCountAttribute])
+      return __IntToNSString(table->RowCount());
+    if ([attribute isEqualToString:NSAccessibilityColumnCountAttribute])
+      return __IntToNSString(table->ColCount());
+#endif
     if ([attribute isEqualToString:NSAccessibilityRowsAttribute]) {
       // Create a new array with the list of table rows.
       NSMutableArray* nativeArray = [[NSMutableArray alloc] init];
@@ -87,10 +105,17 @@
       return nativeArray;
     }
   } else if (ProxyAccessible* proxy = [self getProxyAccessible]) {
+#if(0)
     if ([attribute isEqualToString:NSAccessibilityRowCountAttribute])
       return @(proxy->TableRowCount());
     if ([attribute isEqualToString:NSAccessibilityColumnCountAttribute])
       return @(proxy->TableColumnCount());
+#else
+    if ([attribute isEqualToString:NSAccessibilityRowCountAttribute])
+      return __IntToNSString(proxy->TableRowCount());
+    if ([attribute isEqualToString:NSAccessibilityColumnCountAttribute])
+      return __IntToNSString(proxy->TableColumnCount());
+#endif
     if ([attribute isEqualToString:NSAccessibilityRowsAttribute]) {
       // Create a new array with the list of table rows.
       NSMutableArray* nativeArray = [[NSMutableArray alloc] init];

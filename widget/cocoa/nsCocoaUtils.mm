@@ -75,13 +75,12 @@ NSRect nsCocoaUtils::GeckoRectToCocoaRect(const nsIntRect &geckoRect)
                     geckoRect.height);
 }
 
-NSRect nsCocoaUtils::GeckoRectToCocoaRectDevPix(const nsIntRect &aGeckoRect,
-                                                CGFloat aBackingScale)
+NSRect nsCocoaUtils::GeckoRectToCocoaRectDevPix(const nsIntRect &aGeckoRect)
 {
-  return NSMakeRect(aGeckoRect.x / aBackingScale,
-                    MenuBarScreenHeight() - aGeckoRect.YMost() / aBackingScale,
-                    aGeckoRect.width / aBackingScale,
-                    aGeckoRect.height / aBackingScale);
+  return NSMakeRect(aGeckoRect.x,
+                    MenuBarScreenHeight() - aGeckoRect.YMost(),
+                    aGeckoRect.width,
+                    aGeckoRect.height);
 }
 
 nsIntRect nsCocoaUtils::CocoaRectToGeckoRect(const NSRect &cocoaRect)
@@ -98,13 +97,13 @@ nsIntRect nsCocoaUtils::CocoaRectToGeckoRect(const NSRect &cocoaRect)
 }
 
 LayoutDeviceIntRect nsCocoaUtils::CocoaRectToGeckoRectDevPix(
-  const NSRect& aCocoaRect, CGFloat aBackingScale)
+  const NSRect& aCocoaRect)
 {
   LayoutDeviceIntRect rect;
-  rect.x = NSToIntRound(aCocoaRect.origin.x * aBackingScale);
-  rect.y = NSToIntRound(FlippedScreenY(aCocoaRect.origin.y + aCocoaRect.size.height) * aBackingScale);
-  rect.width = NSToIntRound((aCocoaRect.origin.x + aCocoaRect.size.width) * aBackingScale) - rect.x;
-  rect.height = NSToIntRound(FlippedScreenY(aCocoaRect.origin.y) * aBackingScale) - rect.y;
+  rect.x = NSToIntRound(aCocoaRect.origin.x);
+  rect.y = NSToIntRound(FlippedScreenY(aCocoaRect.origin.y + aCocoaRect.size.height));
+  rect.width = NSToIntRound((aCocoaRect.origin.x + aCocoaRect.size.width)) - rect.x;
+  rect.height = NSToIntRound(FlippedScreenY(aCocoaRect.origin.y)) - rect.y;
   return rect;
 }
 
@@ -199,7 +198,7 @@ BOOL nsCocoaUtils::HasPreciseScrollingDeltas(NSEvent* aEvent)
   // kind of their underlaying carbon event is kEventMouseWheelMoved instead
   // of kEventMouseScroll.
   EventRef carbonEvent = [aEvent _eventRef];
-  return carbonEvent && ::GetEventKind(carbonEvent) == kEventMouseScroll;
+  return carbonEvent && ::GetEventKind(carbonEvent) == 11; //10.4/5 kEventMouseScroll;
 }
 
 @interface NSEvent (ScrollingDeltas)
@@ -244,7 +243,7 @@ BOOL nsCocoaUtils::EventHasPhaseInformation(NSEvent* aEvent)
          EventMomentumPhase(aEvent) != NSEventPhaseNone;
 }
 
-void nsCocoaUtils::HideOSChromeOnScreen(bool aShouldHide)
+void nsCocoaUtils::HideOSChromeOnScreen(bool aShouldHide, NSScreen* aScreen)
 {
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK;
 
@@ -255,10 +254,32 @@ void nsCocoaUtils::HideOSChromeOnScreen(bool aShouldHide)
   sHiddenCount += aShouldHide ? 1 : -1;
   NS_ASSERTION(sHiddenCount >= 0, "Unbalanced HideMenuAndDockForWindow calls");
 
+// Not on 10.4.
+// Restore the 38 code, since we don't have NSApplicationPresentationOptions
+// (and the NSScreen* pointer so that we know which screen the window's on).
+#if(0)
   NSApplicationPresentationOptions options =
     sHiddenCount <= 0 ? NSApplicationPresentationDefault :
     NSApplicationPresentationHideDock | NSApplicationPresentationHideMenuBar;
   [NSApp setPresentationOptions:options];
+#else
+  static int sMenuBarHiddenCount = 0;
+
+  // Although we always hide the Dock, since it may or may not be on the
+  // primary screen, we should only hide the menu bar if it's on the 
+  // same screen as the window. (XXX: Perhaps this is wrong? See issue 97.)
+  // The menu bar is always on the first screen in the screen list.
+  if (aScreen == [[NSScreen screens] objectAtIndex:0]) {
+    sMenuBarHiddenCount += aShouldHide ? 1 : -1;
+  }
+  if (sMenuBarHiddenCount > 0) {
+    ::SetSystemUIMode(kUIModeAllHidden, 0);
+  } else if (sHiddenCount > 0) {
+    ::SetSystemUIMode(kUIModeContentHidden, 0);
+  } else {
+    ::SetSystemUIMode(kUIModeNormal, 0);
+  }
+#endif
 
   NS_OBJC_END_TRY_ABORT_BLOCK;
 }
@@ -350,6 +371,58 @@ void nsCocoaUtils::CleanUpAfterNativeAppModalDialog()
   NS_OBJC_END_TRY_ABORT_BLOCK;
 }
 
+unsigned short nsCocoaUtils::GetCocoaEventKeyCode(NSEvent *theEvent)
+{
+  unsigned short keyCode = [theEvent keyCode];
+  if (nsCocoaFeatures::OnLeopardOrLater())
+    return keyCode;
+  NSEventType type = [theEvent type];
+  // GetCocoaEventKeyCode() can get called with theEvent set to a FlagsChanged
+  // event, which triggers an NSInternalInconsistencyException when
+  // charactersIgnoringModifiers is called on it.  For some reason there's no
+  // problem calling keyCode on it (as we do above).
+  if ((type != NSKeyDown) && (type != NSKeyUp))
+    return keyCode;
+  NSString *unmodchars = [theEvent charactersIgnoringModifiers];
+  if (!keyCode && ([unmodchars length] == 1)) {
+    // An OS-X-10.4.X-specific Apple bug causes the 'theEvent' parameter of
+    // all calls to performKeyEquivalent: (whether on NSMenu, NSWindow or
+    // NSView objects) to have most of its fields zeroed on a ctrl-ESC event.
+    // These include its keyCode and modifierFlags fields, but fortunately
+    // not its characters and charactersIgnoringModifiers fields.  So if
+    // charactersIgnoringModifiers has length == 1 and corresponds to the ESC
+    // character (0x1b), we correct keyCode to 0x35 (kEscapeKeyCode).
+    if ([unmodchars characterAtIndex:0] == 0x1b)
+      keyCode = 0x35;
+  }
+  return keyCode;
+}
+
+NSUInteger nsCocoaUtils::GetCocoaEventModifierFlags(NSEvent *theEvent)
+{
+  NSUInteger modifierFlags = [theEvent modifierFlags];
+  if (nsCocoaFeatures::OnLeopardOrLater())
+    return modifierFlags;
+  NSEventType type = [theEvent type];
+  if ((type != NSKeyDown) && (type != NSKeyUp))
+    return modifierFlags;
+  NSString *unmodchars = [theEvent charactersIgnoringModifiers];
+  if (!modifierFlags && ([unmodchars length] == 1)) {
+    // An OS-X-10.4.X-specific Apple bug causes the 'theEvent' parameter of
+    // all calls to performKeyEquivalent: (whether on NSMenu, NSWindow or
+    // NSView objects) to have most of its fields zeroed on a ctrl-ESC event.
+    // These include its keyCode and modifierFlags fields, but fortunately
+    // not its characters and charactersIgnoringModifiers fields.  So if
+    // charactersIgnoringModifiers has length == 1 and corresponds to the ESC
+    // character (0x1b), we correct modifierFlags to NSControlKeyMask.  (ESC
+    // key events don't get messed up (anywhere they're sent) on opt-ESC,
+    // shift-ESC or cmd-ESC.)
+    if ([unmodchars characterAtIndex:0] == 0x1b)
+      modifierFlags = NSControlKeyMask;
+  }
+  return modifierFlags;
+}
+
 void data_ss_release_callback(void *aDataSourceSurface,
                               const void *data,
                               size_t size)
@@ -417,6 +490,7 @@ nsresult nsCocoaUtils::CreateNSImageFromCGImage(CGImageRef aInputImage, NSImage 
 {
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK_NSRESULT;
 
+#if(0)
   // Be very careful when creating the NSImage that the backing NSImageRep is
   // exactly 1:1 with the input image. On a retina display, both [NSImage
   // lockFocus] and [NSImage initWithCGImage:size:] will create an image with a
@@ -463,17 +537,37 @@ nsresult nsCocoaUtils::CreateNSImageFromCGImage(CGImageRef aInputImage, NSImage 
   [*aResult addRepresentation:offscreenRep];
   [offscreenRep release];
   return NS_OK;
+#else
+  // The code above generates mangled icons on 10.4 and 10.5, so restore the
+  // Firefox 26 code (backout bug 888689).
+  int32_t width = ::CGImageGetWidth(aInputImage);
+  int32_t height = ::CGImageGetHeight(aInputImage);
+  NSRect imageRect = ::NSMakeRect(0.0, 0.0, width, height);
+
+  // Create a new image to receive the Quartz image data.
+  *aResult = [[NSImage alloc] initWithSize:imageRect.size];
+
+  [*aResult lockFocus];
+
+  // Get the Quartz context and draw.
+  CGContextRef imageContext = (CGContextRef)[[NSGraphicsContext currentContext] graphicsPort];
+  ::CGContextDrawImage(imageContext, *(CGRect*)&imageRect, aInputImage);
+
+  [*aResult unlockFocus];
+  return NS_OK;
+#endif
 
   NS_OBJC_END_TRY_ABORT_BLOCK_NSRESULT;
 }
 
-nsresult nsCocoaUtils::CreateNSImageFromImageContainer(imgIContainer *aImage, uint32_t aWhichFrame, NSImage **aResult, CGFloat scaleFactor)
+nsresult nsCocoaUtils::CreateNSImageFromImageContainer(imgIContainer *aImage, uint32_t aWhichFrame, NSImage **aResult)
 {
   RefPtr<SourceSurface> surface;
   int32_t width = 0, height = 0;
   aImage->GetWidth(&width);
   aImage->GetHeight(&height);
 
+#if(0)
   // Render a vector image at the correct resolution on a retina display
   if (aImage->GetType() == imgIContainer::TYPE_VECTOR && scaleFactor != 1.0f) {
     IntSize scaledSize(ceil(width * scaleFactor), ceil(height * scaleFactor));
@@ -499,6 +593,9 @@ nsresult nsCocoaUtils::CreateNSImageFromImageContainer(imgIContainer *aImage, ui
   } else {
     surface = aImage->GetFrame(aWhichFrame, imgIContainer::FLAG_SYNC_DECODE);
   }
+#else
+  surface = aImage->GetFrame(aWhichFrame, imgIContainer::FLAG_SYNC_DECODE);
+#endif
 
   NS_ENSURE_TRUE(surface, NS_ERROR_FAILURE);
 
@@ -580,7 +677,11 @@ nsCocoaUtils::MakeNewCocoaEventWithType(NSEventType aEventType, NSEvent *aEvent)
   NSEvent* newEvent =
     [NSEvent     keyEventWithType:aEventType
                          location:[aEvent locationInWindow] 
+#ifdef NS_LEOPARD_AND_LATER
                     modifierFlags:[aEvent modifierFlags]
+#else
+                    modifierFlags: nsCocoaUtils::GetCocoaEventModifierFlags(aEvent)
+#endif
                         timestamp:[aEvent timestamp]
                      windowNumber:[aEvent windowNumber]
                           context:[aEvent context]
@@ -618,8 +719,31 @@ Modifiers
 nsCocoaUtils::ModifiersForEvent(NSEvent* aNativeEvent)
 {
   NSUInteger modifiers =
+#if(0)
     aNativeEvent ? [aNativeEvent modifierFlags] : [NSEvent modifierFlags];
+#else
+    aNativeEvent ? nsCocoaUtils::GetCocoaEventModifierFlags(aNativeEvent) :
+    nsCocoaFeatures::OnSnowLeopardOrLater() ? [NSEvent modifierFlags] :
+    0;
+#endif
+
   Modifiers result = 0;
+
+  // Account for Carbon events here too. (See bug 801601.)
+  // XXX: Do we need to always do this, or only if this is a non-native event?
+  UInt32 carbonModifiers = ::GetCurrentKeyModifiers();
+  if (carbonModifiers & alphaLock)
+    result |= MODIFIER_CAPSLOCK;
+  if (carbonModifiers & (controlKey | rightControlKey))
+    result |= MODIFIER_CONTROL;
+  if (carbonModifiers & (optionKey | rightOptionKey))
+    result |= MODIFIER_ALT | MODIFIER_ALTGRAPH;
+  if (carbonModifiers & (shiftKey | rightShiftKey))
+    result |= MODIFIER_SHIFT;
+  if (carbonModifiers & cmdKey)
+    result |= MODIFIER_META;
+  // XXX MODIFIER_NUMLOCK
+
   if (modifiers & NSShiftKeyMask) {
     result |= MODIFIER_SHIFT;
   }
@@ -705,6 +829,7 @@ static bool sHiDPIPrefInitialized = false;
 bool
 nsCocoaUtils::HiDPIEnabled()
 {
+#if(0)
   if (!sHiDPIPrefInitialized) {
     sHiDPIPrefInitialized = true;
 
@@ -745,6 +870,9 @@ nsCocoaUtils::HiDPIEnabled()
   }
 
   return sHiDPIEnabled;
+#else
+  return false; // Eliminate this since it leaks NSObjects.
+#endif
 }
 
 void

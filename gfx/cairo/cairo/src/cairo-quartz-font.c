@@ -76,6 +76,9 @@ static void (*CGFontGetGlyphsForUnicharsPtr) (CGFontRef, const UniChar[], const 
 static void (*CGContextSetAllowsFontSmoothingPtr) (CGContextRef, bool) = NULL;
 static bool (*CGContextGetAllowsFontSmoothingPtr) (CGContextRef) = NULL;
 
+/* Not public in the least bit */
+static CGPathRef (*CGFontGetGlyphPathPtr) (CGFontRef fontRef, CGAffineTransform *textTransform, int unknown, CGGlyph glyph) = NULL;
+
 /* CGFontGetHMetrics isn't public, but the other functions are public/present in 10.5 */
 typedef struct {
     int ascent;
@@ -118,6 +121,7 @@ quartz_font_ensure_symbols(void)
     /* These have the same name in 10.4 and 10.5 */
     CGFontGetUnitsPerEmPtr = dlsym(RTLD_DEFAULT, "CGFontGetUnitsPerEm");
     CGFontGetGlyphAdvancesPtr = dlsym(RTLD_DEFAULT, "CGFontGetGlyphAdvances");
+    CGFontGetGlyphPathPtr = dlsym(RTLD_DEFAULT, "CGFontGetGlyphPath");
 
     CGFontGetHMetricsPtr = dlsym(RTLD_DEFAULT, "CGFontGetHMetrics");
     CGFontGetAscentPtr = dlsym(RTLD_DEFAULT, "CGFontGetAscent");
@@ -127,7 +131,10 @@ quartz_font_ensure_symbols(void)
     CGContextGetAllowsFontSmoothingPtr = dlsym(RTLD_DEFAULT, "CGContextGetAllowsFontSmoothing");
     CGContextSetAllowsFontSmoothingPtr = dlsym(RTLD_DEFAULT, "CGContextSetAllowsFontSmoothing");
 
+#if(0)
     CTFontCreateWithGraphicsFontPtr = dlsym(RTLD_DEFAULT, "CTFontCreateWithGraphicsFont");
+// This doesn't work right in 10.4, even though the symbol exists.
+#endif
 
     if ((CGFontCreateWithFontNamePtr || CGFontCreateWithNamePtr) &&
 	CGFontGetGlyphBBoxesPtr &&
@@ -570,9 +577,14 @@ _cairo_quartz_init_glyph_path (cairo_quartz_scaled_font_t *font,
 					-font->base.scale.yy,
 					0, 0);
 
+#if(0)
     ctFont = CTFontCreateWithGraphicsFont (font_face->cgFont, 0.0, NULL, NULL);
     glyphPath = CTFontCreatePathForGlyph (ctFont, glyph, &textMatrix);
     CFRelease (ctFont);
+#else
+    // Use previous 10.4 code.
+    glyphPath = CGFontGetGlyphPathPtr (font_face->cgFont, &textMatrix, 0, glyph);   
+#endif
     if (!glyphPath)
 	return CAIRO_INT_STATUS_UNSUPPORTED;
 

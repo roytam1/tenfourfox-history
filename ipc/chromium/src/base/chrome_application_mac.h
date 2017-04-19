@@ -22,9 +22,15 @@
  // Array of objects implementing the CrApplicationEventHookProtocol
   scoped_nsobject<NSMutableArray> eventHooks_;
 }
+#if(0)
 @property(readonly,
           getter=isHandlingSendEvent,
           nonatomic) BOOL handlingSendEvent;
+#else
+// We don't have properties before ObjC 2.0, so we use the 1.0 equivalent.
+- (BOOL)isHandlingSendEvent;
+#endif
+
 
 // Add or remove an event hook to be called for every sendEvent:
 // that the application receives.  These handlers are called before

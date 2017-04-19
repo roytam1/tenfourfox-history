@@ -23,6 +23,18 @@
 
 struct PaUtilRingBuffer;
 
+/* AudioDeviceIOProcID does not exist in Mac OS X 10.4. We can emulate
+   this by using AudioDeviceAddIOProc() and AudioDeviceRemoveIOProc(). */
+typedef AudioDeviceIOProc AudioDeviceIOProcID;
+#define AudioDeviceDestroyIOProcID AudioDeviceRemoveIOProc
+
+static OSStatus AudioDeviceCreateIOProcID(AudioDeviceID dev,
+		AudioDeviceIOProc proc, void *data,
+		AudioDeviceIOProcID *procid) {
+	*procid = proc;
+	return AudioDeviceAddIOProc(dev, proc, data);
+}
+
 namespace webrtc
 {
 class EventWrapper;
@@ -296,10 +308,8 @@ private:
     uint16_t _outputDeviceIndex;
     AudioDeviceID _inputDeviceID;
     AudioDeviceID _outputDeviceID;
-#if __MAC_OS_X_VERSION_MAX_ALLOWED >= 1050
     AudioDeviceIOProcID _inDeviceIOProcID;
     AudioDeviceIOProcID _deviceIOProcID;
-#endif
     bool _inputDeviceIsSpecified;
     bool _outputDeviceIsSpecified;
 

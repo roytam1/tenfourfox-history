@@ -495,7 +495,7 @@ runtests:: $(PROGS) ALWAYS
 	@$(ECHO) "Test\t\t\tResult\n"
 	@cd $(OBJDIR); for i in $(PROGRAMS); do					\
 	$(ECHO) "$$i\c";										\
-	./$$i >> $(LOGFILE) 2>&1 ;								\
+	DYLD_LIBRARY_PATH=$(dist_bindir) ./$$i >> $(LOGFILE) 2>&1 ;								\
 	if  [ 0 = $$? ] ; then									\
 		$(ECHO) "\t\t\tPassed";								\
 	else													\

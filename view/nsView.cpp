@@ -241,6 +241,8 @@ LayoutDeviceIntRect nsView::CalcWidgetBounds(nsWindowType aType)
   LayoutDeviceIntRect newBounds =
     LayoutDeviceIntRect::FromUnknownRect(viewBounds.ToNearestPixels(p2a));
 
+// Doesn't occur on 10.4.
+#if(0)
 #if defined(XP_MACOSX) || (MOZ_WIDGET_GTK == 3)
   // cocoa and GTK round widget coordinates to the nearest global "display
   // pixel" integer value. So we avoid fractional display pixel values by
@@ -266,6 +268,7 @@ LayoutDeviceIntRect nsView::CalcWidgetBounds(nsWindowType aType)
       newBounds.height -= round;
     }
   }
+#endif
 #endif
 
   // Compute where the top-left of our widget ended up relative to the parent

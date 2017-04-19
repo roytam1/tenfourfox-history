@@ -19,5 +19,6 @@ runOffThreadScript();
 
 var msg = getLastWarning().message;
 assertEq(msg === "asm.js type error: Disabled by debugger" ||
+         msg === "asm.js type error: AsmJS not currently supported on PowerPC; downgrading to IonPower" ||
          msg === "asm.js type error: Disabled by lack of floating point support",
          true);

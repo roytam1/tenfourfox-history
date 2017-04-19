@@ -13,6 +13,8 @@
 
 #define MAC_OS_X_VERSION_MASK      0x0000FFFF
 #define MAC_OS_X_VERSION_10_0_HEX  0x00001000
+#define MAC_OS_X_VERSION_10_4_HEX  0x00001040
+#define MAC_OS_X_VERSION_10_5_HEX  0x00001050
 #define MAC_OS_X_VERSION_10_6_HEX  0x00001060
 #define MAC_OS_X_VERSION_10_7_HEX  0x00001070
 #define MAC_OS_X_VERSION_10_8_HEX  0x00001080
@@ -61,6 +63,7 @@ static int intAtStringIndex(NSArray *array, int index)
 
 void nsCocoaFeatures::GetSystemVersion(int &major, int &minor, int &bugfix)
 {
+#if(0)
     major = minor = bugfix = 0;
 
     NSString* versionString = [[NSDictionary dictionaryWithContentsOfFile:
@@ -76,6 +79,13 @@ void nsCocoaFeatures::GetSystemVersion(int &major, int &minor, int &bugfix)
             }
         }
     }
+#else
+	// Gestalt() is good enough, and probably faster for 10.4-10.6.
+	int32_t osxVersion = OSXVersion();
+	major = ExtractMajorVersion(osxVersion);
+	minor = ExtractMinorVersion(osxVersion);
+	bugfix = ExtractBugFixVersion(osxVersion);
+#endif
 }
 
 int32_t nsCocoaFeatures::GetVersion(int32_t aMajor, int32_t aMinor, int32_t aBugFix)
@@ -83,12 +93,12 @@ int32_t nsCocoaFeatures::GetVersion(int32_t aMajor, int32_t aMinor, int32_t aBug
     int32_t osxVersion;
     if (aMajor < 10) {
         aMajor = 10;
-        NS_ERROR("Couldn't determine OS X version, assuming 10.6");
-        osxVersion = MAC_OS_X_VERSION_10_6_HEX;
-    } else if (aMinor < 6) {
-        aMinor = 6;
-        NS_ERROR("OS X version too old, assuming 10.6");
-        osxVersion = MAC_OS_X_VERSION_10_6_HEX;
+        NS_ERROR("Couldn't determine OS X version, assuming 10.4");
+        osxVersion = MAC_OS_X_VERSION_10_4_HEX;
+    } else if (aMinor < 4) {
+        aMinor = 4;
+        NS_ERROR("OS X version too old, assuming 10.4");
+        osxVersion = MAC_OS_X_VERSION_10_4_HEX;
     } else {
         MOZ_ASSERT(aMajor == 10); // For now, even though we're ready...
         MOZ_ASSERT(aMinor < 16);
@@ -111,9 +121,42 @@ nsCocoaFeatures::InitializeVersionNumbers()
     // as this gets called before the main autorelease pool is in place.
     nsAutoreleasePool localPool;
 
+#if(0)
     int major, minor, bugfix;
     GetSystemVersion(major, minor, bugfix);
     mOSXVersion = GetVersion(major, minor, bugfix);
+#else
+	int mOSXVersionMinor, mOSXVersionBugFix; // use old names
+	int mOSXVersionMajor = 10;
+	
+    // GetSystemVersion() is unnecessary on OS X prior to 10.8, and
+    // Gestalt() is not deprecated there. We can't run on 10.7+ anyhow.
+    // Although gestaltSystemVersion is deprecated since 10.3, we use it
+    // to save a call since we can get Major and Minor in one step.
+    OSErr err = ::Gestalt(gestaltSystemVersion,
+		reinterpret_cast<SInt32*>(&mOSXVersion));
+    if (err != noErr) {
+        NS_ERROR("Couldn't determine OS X version, assuming 10.4");
+        mOSXVersion = MAC_OS_X_VERSION_10_4_HEX;
+	}
+	mOSXVersion &= MAC_OS_X_VERSION_MASK;
+#if DEBUG
+	if ((mOSXVersion & 0x0000ff00) != 0x00001000) {
+		NS_ERROR("Major version is not 10???");
+	}
+#endif
+	mOSXVersionMinor = (mOSXVersion & 0x000000f0) >> 4;
+	// We need this to distinguish 10.4.10 and 10.4.11 from 10.4.9, even though we only
+	// support 10.4.11.
+	err = ::Gestalt(gestaltSystemVersionBugFix,
+		reinterpret_cast<SInt32*>(&mOSXVersionBugFix));
+	if (err != noErr) {
+		NS_ERROR("Couldn't determine OS X bug fix, assuming default");
+		mOSXVersionBugFix = (mOSXVersionMinor == 4) ? 11 : 8;
+	}
+	mOSXVersion &= 0x0000fff0;
+	mOSXVersion |= mOSXVersionBugFix;
+#endif
 
     NS_OBJC_END_TRY_ABORT_BLOCK;
 }
@@ -149,6 +192,19 @@ nsCocoaFeatures::OSXVersionBugFix()
     return ExtractBugFixVersion(OSXVersion());
 }
 
+// For 10.4Fx
+/* static */ bool
+nsCocoaFeatures::OnLeopardOrLater()
+{
+    return (OSXVersion() >= MAC_OS_X_VERSION_10_5_HEX);
+}
+
+/* static */ bool
+nsCocoaFeatures::OnSnowLeopardOrLater()
+{
+    return (OSXVersion() >= MAC_OS_X_VERSION_10_6_HEX);
+}
+
 /* static */ bool
 nsCocoaFeatures::OnLionOrLater()
 {
@@ -182,6 +238,7 @@ nsCocoaFeatures::OnElCapitanOrLater()
 /* static */ bool
 nsCocoaFeatures::AccelerateByDefault()
 {
+return false;
     return IsAtLeastVersion(10, 6, 3);
 }
 

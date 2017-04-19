@@ -1135,10 +1135,10 @@
           # someplace that Xcode doesn't know about, set mac_sdk_path to the
           # path to the SDK; when set to a non-empty string, SDK detection
           # based on mac_sdk_min will be bypassed entirely.
-          'mac_sdk_min%': '10.6',
+          'mac_sdk_min%': '10.4u',
           'mac_sdk_path%': '',
 
-          'mac_deployment_target%': '10.6',
+          'mac_deployment_target%': '10.4u',
         },
 
         'mac_sdk_min': '<(mac_sdk_min)',
@@ -1609,6 +1609,9 @@
       }],
       ['enable_hidpi==1', {
         'defines': ['ENABLE_HIDPI=1'],
+      }],
+      ['tenfourfox_vmx==1', {
+	'defines': ['TENFOURFOX_VMX=1'],
       }],
       ['fastbuild!=0', {
 

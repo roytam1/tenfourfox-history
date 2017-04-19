@@ -882,6 +882,8 @@ int32_t UdpTransportImpl::SetToS(int32_t DSCP, bool useSetSockOpt)
         WEBRTC_TRACE(kTraceDebug, kTraceTransport, _id,
                      "Setting TOS using SetSockopt");
         int32_t TOSShifted = DSCP << 2;
+// 10.4 doesn't have this constant.
+#define IP_TOS 3
         if (!rtpSock->SetSockopt(IPPROTO_IP, IP_TOS,
                                  (int8_t*) &TOSShifted, 4))
         {

@@ -11,6 +11,8 @@
 using namespace js;
 using namespace jit;
 
+#if(0) // bug 881882
+
 static void
 AnalyzeLsh(TempAllocator& alloc, MLsh* lsh)
 {
@@ -163,6 +165,7 @@ EffectiveAddressAnalysis::analyzeAsmHeapAccess(MAsmJSHeapAccessType* ins)
         }
     }
 }
+#endif // JS_ASMJS
 
 // This analysis converts patterns of the form:
 //   truncate(x + (y << {0,1,2,3}))
@@ -181,6 +184,7 @@ EffectiveAddressAnalysis::analyzeAsmHeapAccess(MAsmJSHeapAccessType* ins)
 bool
 EffectiveAddressAnalysis::analyze()
 {
+#if(0) // bug 881882
     for (ReversePostorderIterator block(graph_.rpoBegin()); block != graph_.rpoEnd(); block++) {
         for (MInstructionIterator i = block->begin(); i != block->end(); i++) {
             // Note that we don't check for MAsmJSCompareExchangeHeap
@@ -194,5 +198,6 @@ EffectiveAddressAnalysis::analyze()
                 analyzeAsmHeapAccess(i->toAsmJSStoreHeap());
         }
     }
+#endif // JS_ASMJS
     return true;
 }

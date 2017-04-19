@@ -13,6 +13,8 @@
 #include "nsDeckFrame.h"
 #include "nsObjCExceptions.h"
 
+typedef uint32_t NSUInteger;
+
 using namespace mozilla::a11y;
 
 enum CheckboxValue {

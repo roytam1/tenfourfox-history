@@ -386,7 +386,7 @@ SourceSurfaceCGBitmapContext::~SourceSurfaceCGBitmapContext()
     CGImageRelease(mImage);
 }
 
-#ifdef MOZ_WIDGET_COCOA
+#if(0) // def MOZ_WIDGET_COCOA
 SourceSurfaceCGIOSurfaceContext::SourceSurfaceCGIOSurfaceContext(DrawTargetCG *aDrawTarget)
 {
   CGContextRef cg = (CGContextRef)aDrawTarget->GetNativeSurface(NativeSurfaceType::CGCONTEXT_ACCELERATED);

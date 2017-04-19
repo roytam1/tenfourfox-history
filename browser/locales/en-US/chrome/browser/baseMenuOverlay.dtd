@@ -37,6 +37,8 @@
 <!ENTITY helpFeedbackPage.label      "Submit Feedback…">
 <!ENTITY helpFeedbackPage.accesskey  "S">
 
+<!ENTITY updateCmd.label                "Check for Updates…">
+
 <!ENTITY helpShowTour2.label            "&brandShorterName; Tour">
 <!ENTITY helpShowTour2.accesskey        "o">
 

@@ -163,7 +163,10 @@ void ThreadPosix::Run() {
 #elif defined(WEBRTC_BSD)
     pthread_set_name_np(pthread_self(), name_.c_str());
 #elif defined(WEBRTC_MAC) || defined(WEBRTC_IOS)
+// Not in 10.4
+#if(0)
     pthread_setname_np(name_.substr(0, 63).c_str());
+#endif
 #endif
   }
 

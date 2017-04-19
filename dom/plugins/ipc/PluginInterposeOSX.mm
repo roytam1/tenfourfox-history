@@ -1,3 +1,4 @@
+#if(0)
 /* -*- Mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*- */
 // vim:set ts=2 sts=2 sw=2 et cin:
 // Copyright (c) 2006-2008 The Chromium Authors. All rights reserved.
@@ -1156,3 +1157,59 @@ mac_plugin_interposing_child_OnShowCursor()
 {
   return OnUnhideCursor();
 }
+#else
+// Dummy class and methods
+#include "base/basictypes.h"
+#include "nsCocoaUtils.h"
+#include "PluginModuleChild.h"
+#include "nsDebug.h"
+#include "PluginInterposeOSX.h"
+#include <set>
+#import <AppKit/AppKit.h>
+#import <Carbon/Carbon.h>
+
+namespace mac_plugin_interposing {
+
+NSCursorInfo::NSCursorInfo()
+{
+}
+NSCursorInfo::NSCursorInfo(NSCursor* aCursor)
+{
+}
+void NSCursorInfo::SetType(Type aType)
+{
+}
+void NSCursorInfo::SetHotSpot(nsPoint aHotSpot)
+{
+}
+void NSCursorInfo::SetCustomImageData(uint8_t* aData, uint32_t aDataLength)
+{
+}
+NSCursorInfo::~NSCursorInfo()
+{
+}
+
+namespace parent {
+
+void OnPluginShowWindow(uint32_t window_id, CGRect window_bounds, bool modal)
+{
+}
+void OnSetCursor(const NSCursorInfo& cursorInfo)
+{
+}
+void OnPushCursor(const NSCursorInfo& cursorInfo)
+{
+}
+void OnPopCursor()
+{
+}
+void OnShowCursor(bool show)
+{
+}
+void OnPluginHideWindow(uint32_t window_id, pid_t aPluginPid)
+{
+}
+
+}//parent
+}//mac_plugin_interposing
+#endif

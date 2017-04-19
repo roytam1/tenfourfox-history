@@ -36,6 +36,19 @@ private:
 };
 
 struct MP3Frame {
+#if __ppc__
+  // I LIKE BIG ENDIAN AND I CANNOT LIE YOU OTHER BROTHERS CAN'T DENY
+  // GETTING FREAKY WITH THE POWER
+  uint16_t mSync1 : 8;      // Always all set
+  uint16_t mSync2 : 3;      // Always all set
+  uint16_t mVersion : 2;
+  uint16_t mLayer : 2;
+  uint16_t mProtected : 1;  // Ignored
+  uint16_t mBitrate : 4;    // Index into mpeg_bitrates above
+  uint16_t mSampleRate : 2; // Index into mpeg_srates above
+  uint16_t mPad : 1;
+  uint16_t mPrivate : 1;    // Ignored
+#else
   uint16_t mSync1 : 8;      // Always all set
   uint16_t mProtected : 1;  // Ignored
   uint16_t mLayer : 2;
@@ -45,6 +58,7 @@ struct MP3Frame {
   uint16_t mPad : 1;
   uint16_t mSampleRate : 2; // Index into mpeg_srates above
   uint16_t mBitrate : 4;    // Index into mpeg_bitrates above
+#endif
 
   uint16_t CalculateLength();
 };

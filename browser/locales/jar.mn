@@ -6,6 +6,8 @@
 
 @AB_CD@.jar:
 % locale browser @AB_CD@ %locale/browser/
+    locale/browser/TenFourFox.dtd                  (%chrome/browser/TenFourFox.dtd)
+    locale/browser/TenFourFox.properties           (%chrome/browser/TenFourFox.properties)
     locale/browser/aboutAccounts.dtd               (%chrome/browser/aboutAccounts.dtd)
     locale/browser/aboutCertError.dtd              (%chrome/browser/aboutCertError.dtd)
     locale/browser/aboutDialog.dtd                 (%chrome/browser/aboutDialog.dtd)

@@ -134,6 +134,11 @@ private:
                     int32_t aLeftLobe, int32_t aRightLobe, int32_t aTopLobe,
                     int32_t aBottomLobe, uint32_t *aIntegralImage, size_t aIntegralImageStride);
 #endif
+#ifdef TENFOURFOX_VMX
+  void BoxBlur_VMX(uint8_t* aData,
+                   int32_t aLeftLobe, int32_t aRightLobe, int32_t aTopLobe,
+                   int32_t aBottomLobe, uint32_t *aIntegralImage, size_t aIntegralImageStride);
+#endif
 
   static CheckedInt<int32_t> RoundUpToMultipleOf4(int32_t aVal);
 

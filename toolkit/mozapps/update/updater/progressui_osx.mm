@@ -30,10 +30,14 @@ static const char *sUpdatePath;
 -(void)awakeFromNib
 {
   NSWindow *w = [progressBar window];
-  
+#ifndef NS_LEOPARD_AND_LATER
+  [w center];
+#endif
+
   [w setTitle:[NSString stringWithUTF8String:sLabels.title]];
   [progressTextField setStringValue:[NSString stringWithUTF8String:sLabels.info]];
 
+#ifdef NS_LEOPARD_AND_LATER
   NSRect origTextFrame = [progressTextField frame];
   [progressTextField sizeToFit];
 
@@ -47,6 +51,7 @@ static const char *sUpdatePath;
   }
 
   [w center];
+#endif
 
   [progressBar setIndeterminate:NO];
   [progressBar setDoubleValue:0.0];

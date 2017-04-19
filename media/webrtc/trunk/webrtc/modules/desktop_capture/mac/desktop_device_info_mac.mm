@@ -76,6 +76,8 @@ void DesktopDeviceInfoMac::InitializeScreenList() {
 }
 
 void DesktopDeviceInfoMac::InitializeApplicationList() {
+// There shall be none, and none shall there be (at least on Tiger).
+#if(0)
   //List all running applications (excluding background processes).
 
   // Get a list of all windows, to match to applications
@@ -138,6 +140,7 @@ void DesktopDeviceInfoMac::InitializeApplicationList() {
 
     desktop_application_list_[pDesktopApplication->getProcessId()] = pDesktopApplication;
   }
+#endif
 }
 
 } //namespace webrtc

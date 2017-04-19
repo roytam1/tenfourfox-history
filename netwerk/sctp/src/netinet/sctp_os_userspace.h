@@ -273,7 +273,9 @@ typedef char* caddr_t;
 #endif
 
 #else /* !defined(Userspace_os_Windows) */
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <pthread.h>
 #if defined(__Userspace_os_DragonFly) || defined(__Userspace_os_FreeBSD) || defined(__Userspace_os_Linux) || defined(__Userspace_os_NetBSD) || defined(__Userspace_os_OpenBSD) || defined(__Userspace_os_NaCl)
 #include <pthread.h>
 #endif
@@ -436,7 +438,7 @@ struct sx {int dummy;};
 /* #include <sys/param.h>  in FreeBSD defines MSIZE */
 /* #include <sys/ktr.h> */
 /* #include <sys/systm.h> */
-#if defined(HAVE_SYS_QUEUE_H)
+#if 0 // 10.4 has an old one. // defined(HAVE_SYS_QUEUE_H)
 #include <sys/queue.h>
 #else
 #include <user_queue.h>

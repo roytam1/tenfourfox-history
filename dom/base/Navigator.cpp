@@ -128,6 +128,8 @@
 #include <cutils/properties.h>
 #endif
 
+#include "OptimizedFor.h"
+
 namespace mozilla {
 namespace dom {
 
@@ -692,6 +694,13 @@ Navigator::GetBuildID(nsAString& aBuildID)
 
   aBuildID.Truncate();
   AppendASCIItoUTF16(buildID, aBuildID);
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+Navigator::GetIsTenFourFox(nsAString& aIsUs)
+{
+  aIsUs.AssignLiteral(FX104_OPTIMIZED_FOR);
   return NS_OK;
 }
 

@@ -140,6 +140,19 @@ nsToolkit::RemoveSleepWakeNotifications()
   NS_OBJC_END_TRY_ABORT_BLOCK;
 }
 
+// This is the callback used in RegisterForAllProcessMouseEvents.
+static OSStatus EventMonitorHandler(EventHandlerCallRef aCaller, EventRef aEvent, void* aRefcon)
+{
+  // Up to Mac OS 10.4 (or when building with the 10.4 SDK), installing a Carbon
+  // event handler like this one caused the OS to post the equivalent Cocoa
+  // events to [NSApp sendEvent:]. When using the 10.5 SDK, this doesn't happen
+  // any more, so we need to do it manually.
+#ifdef NS_LEOPARD_AND_LATER
+  [NSApp sendEvent:[NSEvent eventWithEventRef:aEvent]];
+#endif
+  return eventNotHandledErr;
+}
+
 // Converts aPoint from the CoreGraphics "global display coordinate" system
 // (which includes all displays/screens and has a top-left origin) to its
 // (presumed) Cocoa counterpart (assumed to be the same as the "screen
@@ -206,10 +219,19 @@ nsToolkit::RegisterForAllProcessMouseEvents()
   if (getenv("MOZ_DEBUG"))
     return;
 
+return; // We don't use this in TenFourFox right now. See issue 187.
+
   // Don't do this for apps that use native context menus.
 #ifdef MOZ_USE_NATIVE_POPUP_WINDOWS
   return;
 #endif /* MOZ_USE_NATIVE_POPUP_WINDOWS */
+
+  if (!mEventMonitorHandler) {
+    EventTypeSpec kEvents[] = {{kEventClassMouse, kEventMouseMoved}};
+    InstallEventHandler(GetEventMonitorTarget(), EventMonitorHandler,
+                        GetEventTypeCount(kEvents), kEvents, 0,
+                        &mEventMonitorHandler);
+  }
 
   if (!mEventTapRLS) {
     // Using an event tap for mouseDown events (instead of installing a
@@ -249,6 +271,11 @@ void
 nsToolkit::UnregisterAllProcessMouseEventHandlers()
 {
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK;
+
+  if (mEventMonitorHandler) {
+    RemoveEventHandler(mEventMonitorHandler);
+    mEventMonitorHandler = nullptr;
+  }
 
   if (mEventTapRLS) {
     CFRunLoopRemoveSource(CFRunLoopGetCurrent(), mEventTapRLS,
@@ -318,7 +345,13 @@ nsresult nsToolkit::SwizzleMethods(Class aClass, SEL orgMethod, SEL posedMethod,
   if (!original || !posed)
     return NS_ERROR_FAILURE;
 
+#ifdef __LP64__
   method_exchangeImplementations(original, posed);
+#else
+  IMP aMethodImp = original->method_imp;
+  original->method_imp = posed->method_imp;
+  posed->method_imp = aMethodImp;
+#endif
 
   return NS_OK;
 

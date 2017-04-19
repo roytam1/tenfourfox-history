@@ -11,8 +11,13 @@
 #include "VideoUtils.h"
 
 
+#if __ppc__
+#define FROM_BIG_ENDIAN(X) (X)
+#else
+// Nuh-uh.
 #define FROM_BIG_ENDIAN(X) ((uint32_t)((uint8_t)(X)[0] << 24 | (uint8_t)(X)[1] << 16 | \
                                        (uint8_t)(X)[2] << 8 | (uint8_t)(X)[3]))
+#endif
 
 
 namespace mozilla {

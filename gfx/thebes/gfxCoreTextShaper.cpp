@@ -1,3 +1,4 @@
+#if(0)
 /* -*- Mode: C++; tab-width: 20; indent-tabs-mode: nil; c-basic-offset: 4 -*-
  * This Source Code Form is subject to the terms of the Mozilla Public
  * License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -708,3 +709,6 @@ gfxCoreTextShaper::Shutdown() // [static]
         sDefaultFeaturesDescriptor = nullptr;
     }
 }
+#else
+#warning CoreTextShaper not supported in 10.4
+#endif

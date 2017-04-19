@@ -151,10 +151,12 @@ PluginModuleChild::PluginModuleChild(bool aIsChrome)
         gChromeInstance = this;
     }
 
+#if(0)
 #ifdef XP_MACOSX
     if (aIsChrome) {
       mac_plugin_interposing::child::SetUpCocoaInterposing();
     }
+#endif
 #endif
 }
 
@@ -283,10 +285,12 @@ PluginModuleChild::InitForChrome(const std::string& aPluginFilename,
         AddQuirk(QUIRK_FLASH_EXPOSE_COORD_TRANSLATION);
     }
 #else // defined(XP_MACOSX)
+#if(0)
     const char* namePrefix = "Plugin Content";
     char nameBuffer[80];
     snprintf(nameBuffer, sizeof(nameBuffer), "%s (%s)", namePrefix, info.fName);
     mozilla::plugins::PluginUtilsOSX::SetProcessName(nameBuffer);
+#endif
 #endif
 
     pluginFile.FreePluginInfo(info);
@@ -1797,6 +1801,7 @@ _popupcontextmenu(NPP instance, NPMenu* menu)
     PLUGIN_LOG_DEBUG_FUNCTION;
     AssertPluginThread();
 
+#if(0)
 #ifdef MOZ_WIDGET_COCOA
     double pluginX, pluginY; 
     double screenX, screenY;
@@ -1840,6 +1845,8 @@ _popupcontextmenu(NPP instance, NPMenu* menu)
     NS_WARNING("Not supported on this platform!");
     return NPERR_GENERIC_ERROR;
 #endif
+#endif
+    return NPERR_GENERIC_ERROR; // to make gcc deliriously happy
 }
 
 NPBool

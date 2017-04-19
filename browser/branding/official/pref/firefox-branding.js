@@ -2,8 +2,8 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
-pref("startup.homepage_override_url", "");
-pref("startup.homepage_welcome_url", "https://www.mozilla.org/%LOCALE%/firefox/%VERSION%/firstrun/");
+pref("startup.homepage_override_url","http://www.tenfourfox.com/start/%LOCALE%/%APP%/%VERSION%/whatsnew/from/%OLD_VERSION%");
+pref("startup.homepage_welcome_url","http://www.tenfourfox.com/start/%LOCALE%/%APP%/%VERSION%/firstrun/");
 pref("startup.homepage_welcome_url.additional", "https://www.mozilla.org/%LOCALE%/firefox/%VERSION%/firstrun/learnmore/");
 // Interval: Time between checks for a new version (in seconds)
 pref("app.update.interval", 43200); // 12 hours

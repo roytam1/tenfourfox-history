@@ -47,7 +47,15 @@ VolatileBuffer::Init(size_t aSize, size_t aAlignment)
   }
 
 heap_alloc:
+#if(0)
   (void)moz_posix_memalign(&mBuf, aAlignment, aSize);
+#else
+  // 10.4 doesn't have memalign, but our malloc()s are always aligned to
+  // 16 bytes anyway, and that's all we need to support right now.
+  if(MOZ_UNLIKELY(aAlignment > 16))
+	fprintf(stderr, "Warning: volatile alignment %i.\n", aAlignment);
+  mBuf = malloc(aSize);
+#endif
   mHeap = true;
   return !!mBuf;
 }
@@ -94,7 +102,7 @@ VolatileBuffer::Unlock()
     return;
   }
 
-  int state = VM_PURGABLE_VOLATILE | VM_VOLATILE_GROUP_DEFAULT;
+  int state = VM_PURGABLE_VOLATILE; // | VM_VOLATILE_GROUP_DEFAULT; // 10.4
   DebugOnly<kern_return_t> ret =
     vm_purgable_control(mach_task_self(),
                         (vm_address_t)mBuf,

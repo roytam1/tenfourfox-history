@@ -70,7 +70,7 @@
     roundf(3.5);
 
     f32[0] = 0.5;
-    i32[0] += 1;
+    i32[0] += 0x01000000; // little endian emulation +1
     print('0.5+e =', f32[0]);
 
     var x = f32[0];
@@ -78,7 +78,7 @@
     assertEq(roundf(x), 1);
 
     f32[0] = 0.5;
-    i32[0] -= 1;
+    i32[0] -= 0x00000101; // little endian emulation -1 with carry
     print('0.5-e =', f32[0]);
 
     var x = f32[0];
@@ -86,7 +86,7 @@
     assertEq(roundf(x), 0);
 
     f32[0] = -0.5;
-    i32[0] += 1;
+    i32[0] += 0x01000000; // little endian emulation +1
     print('-0.5-e =', f32[0]);
 
     var x = f32[0];
@@ -94,7 +94,7 @@
     assertEq(roundf(x), -1);
 
     f32[0] = -0.5;
-    i32[0] -= 1;
+    i32[0] -= 0x00000101; // little endian emulation -1 with carry
     print('-0.5+e =', f32[0]);
 
     var x = f32[0];

@@ -25,14 +25,14 @@ if test "$OS_ARCH" = "WINNT"; then
 fi
 
 # Enable building ./signmar and running libmar signature tests
-MOZ_ENABLE_SIGNMAR=1
+MOZ_ENABLE_SIGNMAR=
 
-MOZ_CHROME_FILE_FORMAT=omni
+MOZ_CHROME_FILE_FORMAT=jar
 MOZ_DISABLE_EXPORT_JS=1
 MOZ_SAFE_BROWSING=1
 MOZ_SERVICES_COMMON=1
 MOZ_SERVICES_CRYPTO=1
-MOZ_SERVICES_HEALTHREPORT=1
+MOZ_SERVICES_HEALTHREPORT=
 MOZ_SERVICES_METRICS=1
 MOZ_SERVICES_SYNC=1
 MOZ_SERVICES_CLOUDSYNC=1
@@ -62,13 +62,13 @@ MOZ_WEBGL_CONFORMANT=1
 # Enable navigator.mozPay
 MOZ_PAY=1
 # Enable activities. These are used for FxOS developers currently.
-MOZ_ACTIVITIES=1
+MOZ_ACTIVITIES=
 MOZ_JSDOWNLOADS=1
-MOZ_WEBM_ENCODER=1
-MOZ_RUST_MP4PARSE=1
+MOZ_WEBM_ENCODER=
+MOZ_RUST_MP4PARSE=
 
 # Enable checking that add-ons are signed by the trusted root
-MOZ_ADDON_SIGNING=1
+MOZ_ADDON_SIGNING=
 
 # Include the DevTools client, not just the server (which is the default)
 MOZ_DEVTOOLS=all

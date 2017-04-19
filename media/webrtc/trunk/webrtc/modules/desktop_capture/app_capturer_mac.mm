@@ -79,6 +79,7 @@ void AppCapturerMac::Start(Callback* callback) {
 }
 
 void AppCapturerMac::Capture(const DesktopRegion& region) {
+#if(0)
   // Check that selected process exists
   NSRunningApplication *ra = [NSRunningApplication runningApplicationWithProcessIdentifier:process_id_];
   if (!ra) {
@@ -172,6 +173,7 @@ void AppCapturerMac::Capture(const DesktopRegion& region) {
   CFRelease(app_image);
 
   callback_->OnCaptureCompleted(frame);
+#endif
 }
 
 }  // namespace

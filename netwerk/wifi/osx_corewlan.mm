@@ -3,7 +3,9 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 #import <Cocoa/Cocoa.h>
+#if(0)
 #import <CoreWLAN/CoreWLAN.h>
+#endif
 
 #include <dlfcn.h>
 #include <unistd.h>
@@ -16,6 +18,19 @@
 #include "nsCOMArray.h"
 #include "nsWifiMonitor.h"
 #include "nsWifiAccessPoint.h"
+
+// Undo bug 848435. We still sort of support running under Rosetta on
+// Snow Leopard, so we still need to support CoreWLAN, sort of. Also
+// see bug 514626. This is actually called from nsWifiScannerMac now
+// to make our patch a little more atomic.
+bool WiFiUsingSnowLeopard() {
+  static int32_t gOSXVersion = 0x0;
+  if (gOSXVersion == 0x0) {
+    Gestalt(gestaltSystemVersion, (SInt32*)&gOSXVersion);
+  }
+  // Force this to act like a C++ boolean, not a Obj-C++ BOOL.
+  return (gOSXVersion >= 0x00001060) ? true : false;
+}
 
 nsresult
 GetAccessPointsFromWLAN(nsCOMArray<nsWifiAccessPoint> &accessPoints)
@@ -67,6 +82,7 @@ GetAccessPointsFromWLAN(nsCOMArray<nsWifiAccessPoint> &accessPoints)
         // [CWInterface bssid] returns a string formatted "00:00:00:00:00:00".
         NSString* macString = [anObject bssid];
         if (macString && ([macString length] == 17)) {
+#define NSUInteger PRUint32
           for (NSUInteger i = 0; i < 6; ++i) {
             NSString* part = [macString substringWithRange:NSMakeRange(i * 3, 2)];
             NSScanner* scanner = [NSScanner scannerWithString:part];
@@ -83,6 +99,7 @@ GetAccessPointsFromWLAN(nsCOMArray<nsWifiAccessPoint> &accessPoints)
       // [CWInterface rssi] is deprecated).
       int signal = 0;
       if ([anObject respondsToSelector:@selector(rssiValue)]) {
+#define NSInteger PRInt32
         signal = (int) ((NSInteger) [anObject rssiValue]);
       } else {
         signal = [[anObject rssi] intValue];

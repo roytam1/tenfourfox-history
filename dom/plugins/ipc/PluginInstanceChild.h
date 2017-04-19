@@ -464,6 +464,7 @@ private:
      */
     nsAutoPtr< nsTHashtable<DeletingObjectEntry> > mDeletingHash;
 
+#if(0) // 10.4 no iz.
 #if defined(MOZ_WIDGET_COCOA)
 private:
 #if defined(__i386__)
@@ -490,6 +491,7 @@ public:
 
 private:
     const NPCocoaEvent   *mCurrentEvent;
+#endif
 #endif
 
     bool CanPaintOnBackground();
@@ -584,10 +586,12 @@ private:
     // surface which is on ParentProcess side
     RefPtr<gfxASurface> mBackSurface;
 
+#if(0) // 10.4 used to date your mother.
 #ifdef XP_MACOSX
     // Current IOSurface available for rendering
     // We can't use thebes gfxASurface like other platforms.
     PluginUtilsOSX::nsDoubleBufferCARenderer mDoubleBufferCARenderer; 
+#endif
 #endif
 
     // (Not to be confused with mBackSurface).  This is a recent copy

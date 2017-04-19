@@ -24,6 +24,13 @@
 %define sidebarItemInactiveBorderTop 1px solid #979797
 %define sidebarItemInactiveBackground linear-gradient(#B4B4B4, #8A8A8A) repeat-x
 
+%define bloodyMozillaThisWasBug667480 sighNotInAttachment
+%define toolbarbuttonBorderColor rgba(59, 59, 59, 0.9)
+%define toolbarbuttonFocusedBorderColorAqua rgba(102, 122, 155, 0.9)
+%define toolbarbuttonFocusedBorderColorGraphite rgba(59, 59, 59, 0.7)
+%define toolbarbuttonPressedBackgroundColor #B5B5B5
+%define toolbarbuttonInactiveBackgroundImage -moz-linear-gradient(top, #FFF, #CCC)
+
 %define toolbarbuttonCornerRadius 3px
 %define toolbarbuttonBackground linear-gradient(#FFF, #ADADAD) repeat-x
 %define toolbarbuttonPressedInnerShadow inset rgba(0, 0, 0, 0.3) 0 -6px 10px, inset #000 0 1px 3px, inset rgba(0, 0, 0, 0.2) 0 1px 3px

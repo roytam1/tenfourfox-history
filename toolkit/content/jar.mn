@@ -62,6 +62,8 @@ toolkit.jar:
    content/global/TopLevelVideoDocument.js
    content/global/treeUtils.js
    content/global/viewZoomOverlay.js
+   content/global/sluggo.xhtml
+   content/global/sluggo.jpg
 *+ content/global/bindings/autocomplete.xml    (widgets/autocomplete.xml)
    content/global/bindings/browser.xml         (widgets/browser.xml)
    content/global/bindings/button.xml          (widgets/button.xml)

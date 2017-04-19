@@ -78,7 +78,11 @@ int64_t TickTime::QueryOsForTicks() {
       // TODO(wu): Implement CHECK similar to chrome for all the platforms.
       // Then replace this with a CHECK(retval == KERN_SUCCESS);
 #ifndef WEBRTC_IOS
+#ifdef __ppc__
+	  asm("trap\n");
+#else
       asm("int3");
+#endif
 #else
       __builtin_trap();
 #endif  // WEBRTC_IOS

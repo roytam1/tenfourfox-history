@@ -44,8 +44,11 @@ typedef unsigned long uintptr_t;
 #  include <stdint.h>
 #endif
 
+// I don't understand why this is defined already: typedef int qcms_bool;
+#ifndef ALREADY_HAS_QCMS_BOOL
 typedef qcms_bool bool;
 #define true 1
 #define false 0
+#endif
 
 #endif

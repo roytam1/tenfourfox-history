@@ -300,6 +300,8 @@ AtomicOperations::isLockfree(int32_t size)
 # include "jit/arm64/AtomicOperations-arm64.h"
 #elif defined(JS_CODEGEN_MIPS32) || defined(JS_CODEGEN_MIPS64)
 # include "jit/mips-shared/AtomicOperations-mips-shared.h"
+#elif defined(JS_CODEGEN_PPC_OSX)
+# include "jit/osxppc/AtomicOperations-ppc.h"
 #elif defined(__ppc64__) || defined(__PPC64_)       \
     || defined(__ppc64le__) || defined(__PPC64LE__) \
     || defined(__ppc__) || defined(__PPC__)

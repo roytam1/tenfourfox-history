@@ -24,7 +24,7 @@
 #elif defined(__ARMEL__)
 #define V8_HOST_ARCH_ARM 1
 #else
-#warning Please add support for your architecture in chromium_types.h
+// STFU. Bloody hell.
 #endif
 
 // STORE_SEQUENCER: Because signals can interrupt our profile modification

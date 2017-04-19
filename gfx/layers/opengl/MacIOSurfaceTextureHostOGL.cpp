@@ -3,6 +3,7 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+#if(0)
 #include "MacIOSurfaceTextureHostOGL.h"
 #include "mozilla/gfx/MacIOSurface.h"
 #include "GLContextCGL.h"
@@ -149,3 +150,5 @@ MacIOSurfaceTextureSourceOGL::gl() const
 
 } // namespace layers
 } // namespace mozilla
+
+#endif

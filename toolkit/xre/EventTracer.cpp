@@ -218,6 +218,7 @@ namespace mozilla {
 
 bool InitEventTracing(bool aLog)
 {
+#if defined(DEBUG)
   if (sTracerThread)
     return true;
 
@@ -245,6 +246,11 @@ bool InitEventTracing(bool aLog)
                                   PR_JOINABLE_THREAD,
                                   0);
   return sTracerThread != nullptr;
+#else
+  // Most TenFourFox systems will repeatedly fail this, so we don't use it.
+  // (even the G5!)
+  return true;
+#endif
 }
 
 void ShutdownEventTracing()

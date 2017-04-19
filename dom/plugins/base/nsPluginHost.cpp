@@ -802,6 +802,8 @@ nsPluginHost::InstantiatePluginInstance(const nsACString& aMimeType, nsIURI* aUR
                                         nsPluginInstanceOwner** aOwner)
 {
   NS_ENSURE_ARG_POINTER(aOwner);
+  return NS_ERROR_CONTENT_BLOCKED_SHOW_ALT; // plugins dead! plugins bad!
+#if(0)
 
 #ifdef PLUGIN_LOGGING
   nsAutoCString urlSpec;
@@ -879,6 +881,7 @@ nsPluginHost::InstantiatePluginInstance(const nsACString& aMimeType, nsIURI* aUR
 #endif
 
   return NS_OK;
+#endif
 }
 
 nsPluginTag*
@@ -1147,6 +1150,7 @@ nsPluginHost::GetPlugins(nsTArray<nsCOMPtr<nsIInternalPluginTag>>& aPluginArray,
                          bool aIncludeDisabled)
 {
   aPluginArray.Clear();
+#if(0)
 
   LoadPlugins();
 
@@ -1165,12 +1169,16 @@ nsPluginHost::GetPlugins(nsTArray<nsCOMPtr<nsIInternalPluginTag>>& aPluginArray,
     }
     plugin = plugin->mNext;
   }
+#endif
 }
 
 // FIXME-jsplugins Check users for order of fake v non-fake
 NS_IMETHODIMP
 nsPluginHost::GetPluginTags(uint32_t* aPluginCount, nsIPluginTag*** aResults)
 {
+  *aPluginCount = 0;
+  return NS_OK;
+#if(0)
   LoadPlugins();
 
   uint32_t count = 0;
@@ -1201,6 +1209,7 @@ nsPluginHost::GetPluginTags(uint32_t* aPluginCount, nsIPluginTag*** aResults)
   }
 
   return NS_OK;
+#endif
 }
 
 nsPluginTag*
@@ -1272,6 +1281,8 @@ nsPluginTag*
 nsPluginHost::FindNativePluginForType(const nsACString & aMimeType,
                                       bool aCheckEnabled)
 {
+return nullptr;
+#if(0)
   if (aMimeType.IsEmpty()) {
     return nullptr;
   }
@@ -1290,6 +1301,7 @@ nsPluginHost::FindNativePluginForType(const nsACString & aMimeType,
   }
 
   return FindPreferredPlugin(matchingPlugins);
+#endif
 }
 
 nsPluginTag*
@@ -1297,6 +1309,8 @@ nsPluginHost::FindNativePluginForExtension(const nsACString & aExtension,
                                            /* out */ nsACString & aMimeType,
                                            bool aCheckEnabled)
 {
+return nullptr;
+#if(0)
   if (aExtension.IsEmpty()) {
     return nullptr;
   }
@@ -1324,11 +1338,14 @@ nsPluginHost::FindNativePluginForExtension(const nsACString & aExtension,
   // Re-fetch the matching type because of how FindPreferredPlugin works...
   preferredPlugin->HasExtension(aExtension, aMimeType);
   return preferredPlugin;
+#endif
 }
 
 static nsresult CreateNPAPIPlugin(nsPluginTag *aPluginTag,
                                   nsNPAPIPlugin **aOutNPAPIPlugin)
 {
+  return NS_ERROR_FAILURE;
+#if(0)
   // If this is an in-process plugin we'll need to load it here if we haven't already.
   if (!nsNPAPIPlugin::RunPluginOOP(aPluginTag)) {
     if (aPluginTag->mFullPath.IsEmpty())
@@ -1348,6 +1365,7 @@ static nsresult CreateNPAPIPlugin(nsPluginTag *aPluginTag,
   rv = nsNPAPIPlugin::CreatePlugin(aPluginTag, aOutNPAPIPlugin);
 
   return rv;
+#endif
 }
 
 nsresult nsPluginHost::EnsurePluginLoaded(nsPluginTag* aPluginTag)
@@ -2477,6 +2495,7 @@ nsresult nsPluginHost::FindPlugins(bool aCreatePluginList, bool * aPluginsChange
   NS_ENSURE_ARG_POINTER(aPluginsChanged);
 
   *aPluginsChanged = false;
+return NS_OK;
 
   if (XRE_IsContentProcess()) {
     return FindPluginsInContent(aCreatePluginList, aPluginsChanged);

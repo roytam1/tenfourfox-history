@@ -82,6 +82,35 @@
     </vbox>
   </wizardpage>
 
+  <wizardpage id="manualUpdate2" pageid="manualUpdate2" object="gManualUpdate2Page"
+              onpageshow="gManualUpdate2Page.onPageShow();"
+              onextra2="gManualUpdate2Page.onExtra2();">
+    <updateheader label="&manualUpdate2.title;"/>
+    <vbox class="update-content" flex="1">
+      <label id="manualUpdate2Desc">&manualUpdate2.desc;</label>
+      <separator class="thin"/>
+      <label>&manualUpdate2GetMsg.label;</label>
+      <hbox>
+        <label class="text-link" id="manualUpdate2LinkLabel" value=""
+               onclick="openUpdateURL(event);"/>
+      </hbox>
+    </vbox>
+  </wizardpage>
+
+  <wizardpage id="manualUpdate3" pageid="manualUpdate3" object="gManualUpdate3Page"
+              onpageshow="gManualUpdate3Page.onPageShow();">
+    <updateheader label="&manualUpdate3.title;"/>
+    <vbox class="update-content" flex="1">
+      <label id="manualUpdate3Desc">&manualUpdate3.desc;</label>
+      <separator class="thin"/>
+      <label>&manualUpdate3GetMsg.label;</label>
+      <hbox>
+        <label class="text-link" id="manualUpdate3LinkLabel" value=""
+               onclick="openUpdateURL(event);"/>
+      </hbox>
+    </vbox>
+  </wizardpage>
+
   <wizardpage id="unsupported" pageid="unsupported"
               object="gUnsupportedPage"
               onpageshow="gUnsupportedPage.onPageShow();">
@@ -107,7 +136,7 @@
   </wizardpage>
 
   <wizardpage id="updatesfoundbasic" pageid="updatesfoundbasic"
-              object="gUpdatesFoundBasicPage" next="downloading"
+              object="gUpdatesFoundBasicPage" next="manualUpdate3"
               onpageshow="gUpdatesFoundBasicPage.onPageShow();"
               onextra1="gUpdatesFoundBasicPage.onExtra1();"
               onextra2="gUpdatesFoundBasicPage.onExtra2();">
@@ -129,7 +158,7 @@
   </wizardpage>
 
   <wizardpage id="updatesfoundbillboard" pageid="updatesfoundbillboard"
-              object="gUpdatesFoundBillboardPage" next="downloading"
+              object="gUpdatesFoundBillboardPage" next="manualUpdate3"
               onpageshow="gUpdatesFoundBillboardPage.onPageShow();"
               onextra1="gUpdatesFoundBillboardPage.onExtra1();"
               onextra2="gUpdatesFoundBillboardPage.onExtra2();">
@@ -139,7 +168,7 @@
     <remotecontent id="updateMoreInfoContent" flex="1" remotetype="billboard"/>
   </wizardpage>
 
-  <wizardpage id="license" pageid="license" next="downloading"
+  <wizardpage id="license" pageid="license" next="manualUpdate3"
               object="gLicensePage" onpageshow="gLicensePage.onPageShow();"
               onextra1="gLicensePage.onExtra1();">
     <updateheader label="&license.titleText;"/>
@@ -162,7 +191,7 @@
   </wizardpage>
 
   <wizardpage id="incompatibleList" pageid="incompatibleList"
-              next="downloading" object="gIncompatibleListPage"
+              next="manualUpdate3" object="gIncompatibleListPage"
               onpageshow="gIncompatibleListPage.onPageShow();"
               onextra1="gIncompatibleListPage.onExtra1();">
     <updateheader label="&incompatibleList.title;"/>

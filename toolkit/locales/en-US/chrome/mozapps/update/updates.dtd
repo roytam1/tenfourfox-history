@@ -25,6 +25,19 @@
                                            not have enough space to install it.">
 <!ENTITY  manualUpdateGetMsg.label        "You can always get the latest version of &brandShortName; at:">
 
+<!ENTITY  manualUpdate2.title              "Update Available">
+<!ENTITY  manualUpdate2.desc               "A recommended security and stability update is available for your browser.
+                                           You should download and install it to make sure your browser is up to date.">
+<!ENTITY  manualUpdate2.space.desc         "A recommended security and stability update is available, but you do
+                                           not have enough space to install it.">
+<!ENTITY  manualUpdate2GetMsg.label        "Visit the main download page to get this browser update:">
+
+<!ENTITY  manualUpdate3.title              "Download Update Now">
+<!ENTITY  manualUpdate3.desc               "You are now ready to update your browser.">
+<!ENTITY  manualUpdate3.space.desc         "A recommended security and stability update is available, but you do
+                                           not have enough space to install it.">
+<!ENTITY  manualUpdate3GetMsg.label        "Visit the main download page to get the browser update:">
+
 <!ENTITY  unsupported.title               "System Unsupported">
 <!ENTITY  unsupported.label               "Your &brandShortName; is out of date, but the latest version is not
                                            supported on your system. Please upgrade your system, then try again.

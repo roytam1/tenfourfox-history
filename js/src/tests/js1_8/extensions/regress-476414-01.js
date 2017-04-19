@@ -56,7 +56,8 @@ for (let iters = 0; iters < 2000; ++iters) {
   tryEnsureSanity();
   count=45020; tryItOut("with({}) { (this.__defineGetter__(\"x\", function (y)this)); } ");
   tryEnsureSanity();
-  count=45197; tryItOut("M:with((p={}, (p.z = <x/> ===  '' )()))/*TUUL*/for each (let y in [true, {}, {}, (void 0), true, true, true, (void 0), true, (void 0)]) { return; }");
+  // no longer working in this version of JS.
+  //count=45197; tryItOut("M:with((p={}, (p.z = <x/> ===  '' )()))/*TUUL*/for each (let y in [true, {}, {}, (void 0), true, true, true, (void 0), true, (void 0)]) { return; }");
   tryEnsureSanity();
   gc();
   tryEnsureSanity();

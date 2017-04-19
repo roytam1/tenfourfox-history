@@ -126,6 +126,7 @@ IsAnyTypedArrayClass(const Class* clasp)
 class SharedOps
 {
   public:
+#if(0)
     template<typename T>
     static T load(SharedMem<T*> addr) {
         return js::jit::AtomicOperations::loadSafeWhenRacy(addr);
@@ -135,6 +136,65 @@ class SharedOps
     static void store(SharedMem<T*> addr, T value) {
         js::jit::AtomicOperations::storeSafeWhenRacy(addr, value);
     }
+#else
+    // Floats, doubles and proles are free, er, native byte order.
+    // Need: float, double, u?int(8|16|32)_t, int8_clamped
+    static float load(SharedMem<float*> addr) {
+        return js::jit::AtomicOperations::loadSafeWhenRacy(addr);
+    }
+    static double load(SharedMem<double*> addr) {
+        return js::jit::AtomicOperations::loadSafeWhenRacy(addr);
+    }
+    static int8_t load(SharedMem<int8_t*> addr) {
+        return js::jit::AtomicOperations::loadSafeWhenRacy(addr);
+    }
+    static uint8_t load(SharedMem<uint8_t*> addr) {
+        return js::jit::AtomicOperations::loadSafeWhenRacy(addr);
+    }
+    static int16_t load(SharedMem<int16_t*> addr) {
+        return (int16_t)__builtin_bswap16(js::jit::AtomicOperations::loadSafeWhenRacy(addr));
+    }
+    static uint16_t load(SharedMem<uint16_t*> addr) {
+        return __builtin_bswap16(js::jit::AtomicOperations::loadSafeWhenRacy(addr));
+    }
+    static int32_t load(SharedMem<int32_t*> addr) {
+        return (int32_t)__builtin_bswap32(js::jit::AtomicOperations::loadSafeWhenRacy(addr));
+    }
+    static uint32_t load(SharedMem<uint32_t*> addr) {
+        return __builtin_bswap32(js::jit::AtomicOperations::loadSafeWhenRacy(addr));
+    }
+    static uint8_clamped load(SharedMem<uint8_clamped*> addr) {
+        return js::jit::AtomicOperations::loadSafeWhenRacy(addr);
+    }
+
+    static void store(SharedMem<float*> addr, float value) {
+        js::jit::AtomicOperations::storeSafeWhenRacy(addr, value);
+    }
+    static void store(SharedMem<double*> addr, double value) {
+        js::jit::AtomicOperations::storeSafeWhenRacy(addr, value);
+    }
+    static void store(SharedMem<int8_t*> addr, int8_t value) {
+        js::jit::AtomicOperations::storeSafeWhenRacy(addr, value);
+    }
+    static void store(SharedMem<uint8_t*> addr, uint8_t value) {
+        js::jit::AtomicOperations::storeSafeWhenRacy(addr, value);
+    }
+    static void store(SharedMem<int16_t*> addr, int16_t value) {
+        js::jit::AtomicOperations::storeSafeWhenRacy(addr, (int16_t)__builtin_bswap16(value));
+    }
+    static void store(SharedMem<uint16_t*> addr, uint16_t value) {
+        js::jit::AtomicOperations::storeSafeWhenRacy(addr, (uint16_t)__builtin_bswap16(value));
+    }
+    static void store(SharedMem<int32_t*> addr, int32_t value) {
+        js::jit::AtomicOperations::storeSafeWhenRacy(addr, (int32_t)__builtin_bswap32(value));
+    }
+    static void store(SharedMem<uint32_t*> addr, uint32_t value) {
+        js::jit::AtomicOperations::storeSafeWhenRacy(addr, (uint32_t)__builtin_bswap32(value));
+    }
+    static void store(SharedMem<uint8_clamped*> addr, uint8_clamped value) {
+        js::jit::AtomicOperations::storeSafeWhenRacy(addr, value);
+    }
+#endif
 
     template<typename T>
     static void memcpy(SharedMem<T*> dest, SharedMem<T*> src, size_t size) {
@@ -154,6 +214,7 @@ class SharedOps
 class UnsharedOps
 {
   public:
+#if(0)
     template<typename T>
     static T load(SharedMem<T*> addr) {
         return *addr.unwrapUnshared();
@@ -163,6 +224,63 @@ class UnsharedOps
     static void store(SharedMem<T*> addr, T value) {
         *addr.unwrapUnshared() = value;
     }
+#else
+    static float load(SharedMem<float*> addr) {
+        return *addr.unwrapUnshared();
+    }
+    static double load(SharedMem<double*> addr) {
+        return *addr.unwrapUnshared();
+    }
+    static int8_t load(SharedMem<int8_t*> addr) {
+        return *addr.unwrapUnshared();
+    }
+    static uint8_t load(SharedMem<uint8_t*> addr) {
+        return *addr.unwrapUnshared();
+    }
+    static int16_t load(SharedMem<int16_t*> addr) {
+        return (int16_t)__builtin_bswap16(*addr.unwrapUnshared());
+    }
+    static uint16_t load(SharedMem<uint16_t*> addr) {
+        return __builtin_bswap16(*addr.unwrapUnshared());
+    }
+    static int32_t load(SharedMem<int32_t*> addr) {
+        return (int32_t)__builtin_bswap32(*addr.unwrapUnshared());
+    }
+    static uint32_t load(SharedMem<uint32_t*> addr) {
+        return __builtin_bswap32(*addr.unwrapUnshared());
+    }
+    static uint8_clamped load(SharedMem<uint8_clamped*> addr) {
+        return *addr.unwrapUnshared();
+    }
+
+    static void store(SharedMem<float*> addr, float value) {
+        *addr.unwrapUnshared() = value;
+    }
+    static void store(SharedMem<double*> addr, double value) {
+        *addr.unwrapUnshared() = value;
+    }
+    static void store(SharedMem<int8_t*> addr, int8_t value) {
+        *addr.unwrapUnshared() = value;
+    }
+    static void store(SharedMem<uint8_t*> addr, uint8_t value) {
+        *addr.unwrapUnshared() = value;
+    }
+    static void store(SharedMem<int16_t*> addr, int16_t value) {
+        *addr.unwrapUnshared() = __builtin_bswap16(value);
+    }
+    static void store(SharedMem<uint16_t*> addr, uint16_t value) {
+        *addr.unwrapUnshared() = __builtin_bswap16(value);
+    }
+     static void store(SharedMem<int32_t*> addr, int32_t value) {
+        *addr.unwrapUnshared() = __builtin_bswap32(value);
+    }
+   static void store(SharedMem<uint32_t*> addr, uint32_t value) {
+        *addr.unwrapUnshared() = __builtin_bswap32(value);
+    }
+    static void store(SharedMem<uint8_clamped*> addr, uint8_clamped value) {
+        *addr.unwrapUnshared() = value;
+    }
+#endif
 
     template<typename T>
     static void memcpy(SharedMem<T*> dest, SharedMem<T*> src, size_t size) {

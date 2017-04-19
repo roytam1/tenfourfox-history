@@ -9,24 +9,100 @@
 #include <crt_externs.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include <spawn.h>
+// #include <spawn.h> // we don't have this in 10.4.
 #include "readstrings.h"
 
-// Prefer the currently running architecture (this is the same as the
-// architecture that launched the updater) and fallback to CPU_TYPE_ANY if it
-// is no longer available after the update.
-static cpu_type_t pref_cpu_types[2] = {
-#if defined(__i386__)
-                                 CPU_TYPE_X86,
-#elif defined(__x86_64__)
-                                 CPU_TYPE_X86_64,
-#elif defined(__ppc__)
-                                 CPU_TYPE_POWERPC,
-#endif
-                                 CPU_TYPE_ANY };
+#define MAC_OS_X_VERSION_10_6_HEX 0x00001060
+#define MAC_OS_X_VERSION_10_5_HEX 0x00001050
+#define MAC_OS_X_VERSION_10_4_HEX 0x00001040 // which is all that matters :)
+
+typedef int cpu_type_t; // we don't have cpu_type* on 10.4.
+#define CPU_TYPE_ANY            ((cpu_type_t) -1)
+#define CPU_TYPE_POWERPC        ((cpu_type_t) 18)
+
+// we need this! we're PPC!
+#ifdef __ppc__
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#include <mach/machine.h>
+#endif /* __ppc__ */
+
+SInt32 OSXVersion()
+{
+  static SInt32 gOSXVersion = 0x0;
+  if (gOSXVersion == 0x0) {
+    OSErr err = ::Gestalt(gestaltSystemVersion, &gOSXVersion);
+    if (err != noErr) {
+      // This should probably be changed when our minimum version changes
+      printf("Couldn't determine OS X version, assuming 10.5");
+      gOSXVersion = MAC_OS_X_VERSION_10_5_HEX;
+    }
+  }
+  return gOSXVersion;
+}
+
+bool OnSnowLeopardOrLater()
+{
+  return (OSXVersion() >= MAC_OS_X_VERSION_10_6_HEX);
+}
+
+// We prefer an architecture based on OS and then the fallback
+// CPU_TYPE_ANY for a total of 2.
+#define CPU_ATTR_COUNT 2
 
 void LaunchChild(int argc, char **argv)
 {
+#if(1)
+/* Use the old 3.6 code. -- Cameron */
+  int i;
+  NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+  NSTask *child = [[[NSTask alloc] init] autorelease];
+  NSMutableArray *args = [[[NSMutableArray alloc] init] autorelease];
+
+#ifdef __ppc__
+  // It's possible that the app is a universal binary running under Rosetta
+  // translation because the user forced it to.  Relaunching via NSTask would
+  // launch the app natively, which the user apparently doesn't want.
+  // In that case, try to preserve translation.
+
+  // If the sysctl doesn't exist, it's because Rosetta doesn't exist,
+  // so don't try to force translation.  In case of other errors, just assume
+  // that the app is native.
+
+  int isNative = 0;
+  size_t sz = sizeof(isNative);
+
+  if (sysctlbyname("sysctl.proc_native", &isNative, &sz, NULL, 0) == 0 &&
+      !isNative) {
+    // Running translated on ppc.
+    cpu_type_t preferredCPU = CPU_TYPE_POWERPC;
+    sysctlbyname("sysctl.proc_exec_affinity", NULL, NULL,
+                 &preferredCPU, sizeof(preferredCPU));
+
+    // Nothing can be done to handle failure, relaunch anyway.
+  }
+#endif /* __ppc__ */
+
+  for (i = 1; i < argc; ++i)
+    [args addObject: [NSString stringWithCString: argv[i]]];
+
+  [child setLaunchPath: [NSString stringWithCString: argv[0]]];
+  [child setArguments: args];
+  [child launch];
+  [pool release];
+#else // the 4.0 code as of beta 7
+  // We prefer CPU_TYPE_X86_64 on 10.6 and CPU_TYPE_X86 on 10.5,
+  // if that isn't possible we let the OS pick the next best 
+  // thing (CPU_TYPE_ANY).
+  cpu_type_t cpu_types[CPU_ATTR_COUNT];
+  if (OnSnowLeopardOrLater()) {
+    cpu_types[0] = CPU_TYPE_X86_64;
+  }
+  else {
+    cpu_types[0] = CPU_TYPE_X86;
+  }
+  cpu_types[1] = CPU_TYPE_ANY;
+
   // Initialize spawn attributes.
   posix_spawnattr_t spawnattr;
   if (posix_spawnattr_init(&spawnattr) != 0) {
@@ -72,6 +148,7 @@ void LaunchChild(int argc, char **argv)
   if (result != 0) {
     printf("Process spawn failed with code %d!", result);
   }
+#endif
 }
 
 void

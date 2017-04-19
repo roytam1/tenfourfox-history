@@ -44,6 +44,9 @@ extern "C" OSStatus TSMProcessRawKeyEvent(EventRef anEvent);
   NSTextView *mInputTextView;
 }
 
+// Not in 10.4 or 10.5.
+typedef NSObject NSTextInputContext;
+
 + (ComplexTextInputPanelImpl*)sharedComplexTextInputPanelImpl;
 
 - (NSTextInputContext*)inputContext;
@@ -92,10 +95,13 @@ extern "C" OSStatus TSMProcessRawKeyEvent(EventRef anEvent);
 
   [self setFloatingPanel:YES];
 
+// NSTextInputContextKeyboardSelectionDidChangeNotification needs 10.6+.
+#if(0)
   [[NSNotificationCenter defaultCenter] addObserver:self
                                            selector:@selector(keyboardInputSourceChanged:)
                                                name:NSTextInputContextKeyboardSelectionDidChangeNotification
                                              object:nil];
+#endif
 
   return self;
 }
@@ -156,7 +162,8 @@ extern "C" OSStatus TSMProcessRawKeyEvent(EventRef anEvent);
 
 - (NSTextInputContext*)inputContext
 {
-  return [mInputTextView inputContext];
+  return nullptr; // No NSTextInputContext in 10.4 or 10.5.
+return [mInputTextView inputContext];
 }
 
 - (void)cancelComposition

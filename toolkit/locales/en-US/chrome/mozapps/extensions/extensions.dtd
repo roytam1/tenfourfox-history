@@ -36,8 +36,8 @@
 <!ENTITY warning.updatesecurity.enable.tooltip     "Enable add-on update security checking">
 
 <!-- global informations -->
-<!ENTITY info.plugincheck.label                 "Check to see if your plugins are up to date">
-<!ENTITY info.plugincheck.tooltip               "Check to see if your plugins are up to date">
+<!ENTITY info.plugincheck.label                 "Warning: TenFourFox does not support plugins and disables them by default.">
+<!ENTITY info.plugincheck.tooltip               "See release notes for details">
 
 <!-- categories / views -->
 <!ENTITY view.search.label                    "Search">

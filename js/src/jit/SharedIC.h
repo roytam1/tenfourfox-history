@@ -1016,6 +1016,10 @@ class ICStubCompiler
         MOZ_ASSERT(!regs.has(PseudoStackPointer));
         MOZ_ASSERT(!regs.has(RealStackPointer));
         MOZ_ASSERT(!regs.has(ICTailCallReg));
+#elif defined(JS_CODEGEN_OSX_PPC)
+        // r0, r1 and r12 are explicitly non-allocatable, so we just cover the
+        // rest. FrameReg and StubReg are allocated below.
+        MOZ_ASSERT(!regs.has(ICTailCallReg));
 #else
         MOZ_ASSERT(!regs.has(BaselineStackReg));
 #endif

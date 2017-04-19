@@ -42,7 +42,8 @@ public:
     // with embedded color bitmaps (Apple Color Emoji), as Core Text renders
     // the glyphs with non-linear scaling at small pixel sizes.
     virtual bool ProvidesGlyphWidths() const override {
-        return mFontEntry->HasFontTable(TRUETYPE_TAG('s','b','i','x'));
+        return false; // see gfxMacFont::GetGlyphWidth
+        //return mFontEntry->HasFontTable(TRUETYPE_TAG('s','b','i','x'));
     }
 
     virtual int32_t GetGlyphWidth(DrawTarget& aDrawTarget,
@@ -89,7 +90,7 @@ protected:
 
     // a Core Text font reference, created only if we're using CT to measure
     // glyph widths; otherwise null.
-    CTFontRef             mCTFont;
+    //CTFontRef             mCTFont; // not supported in 10.4
 
     cairo_font_face_t    *mFontFace;
 

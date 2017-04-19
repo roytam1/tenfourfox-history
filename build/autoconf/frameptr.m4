@@ -38,4 +38,5 @@ AC_DEFUN([MOZ_SET_FRAMEPTR_FLAGS], [
   else
     MOZ_FRAMEPTR_FLAGS="$MOZ_DISABLE_FRAME_PTR"
   fi
+  MOZ_FRAMEPTR_FLAGS="" # let the compiler figure it out
 ])

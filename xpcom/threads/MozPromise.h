@@ -257,6 +257,9 @@ public:
 
   static RefPtr<AllPromiseType> All(AbstractThread* aProcessingThread, nsTArray<RefPtr<MozPromise>>& aPromises)
   {
+// Work around older gcc 4.8 versions misinterpreting C++11 lambdas in Obj-C++
+// files as Objective-C messages. This only works if we don't call "All."
+#ifndef GCC_SUCKS_MOOSE_WANG
     RefPtr<AllPromiseHolder> holder = new AllPromiseHolder(aPromises.Length());
     for (size_t i = 0; i < aPromises.Length(); ++i) {
       aPromises[i]->Then(aProcessingThread, __func__,
@@ -265,6 +268,9 @@ public:
       );
     }
     return holder->Promise();
+#else
+    MOZ_CRASH("objective-c++ clash with MozPromise:All");
+#endif
   }
 
   class Request : public MozPromiseRefcountable

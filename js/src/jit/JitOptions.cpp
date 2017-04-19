@@ -115,7 +115,9 @@ DefaultJitOptions::DefaultJitOptions()
 
     // Toggles whether sincos optimization is globally disabled.
     // See bug984018: The MacOS is the only one that has the sincos fast.
-    #if defined(XP_MACOSX)
+// 10.4 and 10.5 do not implement __sincos or sincos, and we don't
+// have the ABI defined, so there is no benefit here either.
+    #if (0) // defined(XP_MACOSX)
         SET_DEFAULT(disableSincos, false);
     #else
         SET_DEFAULT(disableSincos, true);
@@ -141,7 +143,7 @@ DefaultJitOptions::DefaultJitOptions()
 
     // How many invocations or loop iterations are needed before functions
     // are compiled with the baseline compiler.
-    SET_DEFAULT(baselineWarmUpThreshold, 10);
+    SET_DEFAULT(baselineWarmUpThreshold, 2);
 
     // Number of exception bailouts (resuming into catch/finally block) before
     // we invalidate and forbid Ion compilation.

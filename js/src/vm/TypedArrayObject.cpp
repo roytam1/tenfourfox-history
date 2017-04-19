@@ -681,14 +681,16 @@ class TypedArrayObjectTemplate : public TypedArrayObject
     {
         TypedArrayObject& tarray = obj->as<TypedArrayObject>();
         MOZ_ASSERT(index < tarray.length());
-        return jit::AtomicOperations::loadSafeWhenRacy(tarray.viewDataEither().cast<NativeType*>() + index);
+        //return jit::AtomicOperations::loadSafeWhenRacy(tarray.viewDataEither().cast<NativeType*>() + index);
+        return SharedOps::load(tarray.viewDataEither().cast<NativeType*>() + index);
     }
 
     static void
     setIndex(TypedArrayObject& tarray, uint32_t index, NativeType val)
     {
         MOZ_ASSERT(index < tarray.length());
-        jit::AtomicOperations::storeSafeWhenRacy(tarray.viewDataEither().cast<NativeType*>() + index, val);
+        //jit::AtomicOperations::storeSafeWhenRacy(tarray.viewDataEither().cast<NativeType*>() + index, val);
+        SharedOps::store(tarray.viewDataEither().cast<NativeType*>() + index, val);
     }
 
     static Value getIndexValue(JSObject* tarray, uint32_t index);

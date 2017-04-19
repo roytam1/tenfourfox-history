@@ -36,6 +36,7 @@
 
 #include "pkixcheck.h"
 #include "pkixutil.h"
+#include <string.h>
 
 namespace mozilla { namespace pkix {
 

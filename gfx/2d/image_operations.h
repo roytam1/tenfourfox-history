@@ -29,6 +29,7 @@
 #ifndef SKIA_EXT_IMAGE_OPERATIONS_H_
 #define SKIA_EXT_IMAGE_OPERATIONS_H_
 
+#if(0)
 #include "skia/include/core/SkTypes.h"
 #include "Types.h"
 #include "convolver.h"
@@ -282,4 +283,5 @@ namespace resize {
 
 }  // namespace skia
 
+#endif
 #endif  // SKIA_EXT_IMAGE_OPERATIONS_H_

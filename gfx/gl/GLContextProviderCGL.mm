@@ -125,8 +125,10 @@ GLContextCGL::MakeCurrentImpl(bool aForce)
         // If swapInt is 1, then glSwapBuffers will block and wait for a vblank signal.
         // When we're iterating as fast as possible, however, we want a non-blocking
         // glSwapBuffers, which will happen when swapInt==0.
+#if(0)
         GLint swapInt = gfxPrefs::LayoutFrameRate() == 0 ? 0 : 1;
         [mContext setValues:&swapInt forParameter:NSOpenGLCPSwapInterval];
+#endif
     }
     return true;
 }
@@ -177,26 +179,27 @@ GLContextProviderCGL::CreateWrappingExisting(void*, void*)
     return nullptr;
 }
 
+// 10.4 doesn't have NSOpenGLPFAAllowOfflineRenderers.
 static const NSOpenGLPixelFormatAttribute kAttribs_singleBuffered[] = {
-    NSOpenGLPFAAllowOfflineRenderers,
+    //NSOpenGLPFAAllowOfflineRenderers,
     0
 };
 
 static const NSOpenGLPixelFormatAttribute kAttribs_singleBuffered_accel[] = {
     NSOpenGLPFAAccelerated,
-    NSOpenGLPFAAllowOfflineRenderers,
+    //NSOpenGLPFAAllowOfflineRenderers,
     0
 };
 
 static const NSOpenGLPixelFormatAttribute kAttribs_doubleBuffered[] = {
-    NSOpenGLPFAAllowOfflineRenderers,
+    //NSOpenGLPFAAllowOfflineRenderers,
     NSOpenGLPFADoubleBuffer,
     0
 };
 
 static const NSOpenGLPixelFormatAttribute kAttribs_doubleBuffered_accel[] = {
     NSOpenGLPFAAccelerated,
-    NSOpenGLPFAAllowOfflineRenderers,
+    //NSOpenGLPFAAllowOfflineRenderers,
     NSOpenGLPFADoubleBuffer,
     0
 };
@@ -206,7 +209,7 @@ static const NSOpenGLPixelFormatAttribute kAttribs_offscreen[] = {
 };
 
 static const NSOpenGLPixelFormatAttribute kAttribs_offscreen_allow_offline[] = {
-    NSOpenGLPFAAllowOfflineRenderers,
+    //NSOpenGLPFAAllowOfflineRenderers,
     0
 };
 
@@ -215,15 +218,18 @@ static const NSOpenGLPixelFormatAttribute kAttribs_offscreen_accel[] = {
     0
 };
 
+// 10.4 doesn't have these either.
 static const NSOpenGLPixelFormatAttribute kAttribs_offscreen_coreProfile[] = {
     NSOpenGLPFAAccelerated,
-    NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
+    //NSOpenGLPFAOpenGLProfile, NSOpenGLProfileVersion3_2Core,
     0
 };
 
 static NSOpenGLContext*
 CreateWithFormat(const NSOpenGLPixelFormatAttribute* attribs)
 {
+return nullptr; // this is totally bogus on 10.4
+#if(0)
     NSOpenGLPixelFormat* format = [[NSOpenGLPixelFormat alloc]
                                    initWithAttributes:attribs];
     if (!format) {
@@ -237,6 +243,7 @@ CreateWithFormat(const NSOpenGLPixelFormatAttribute* attribs)
     [format release];
 
     return context;
+#endif
 }
 
 already_AddRefed<GLContext>

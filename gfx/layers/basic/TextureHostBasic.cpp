@@ -22,12 +22,14 @@ CreateTextureHostBasic(const SurfaceDescriptor& aDesc,
                        ISurfaceAllocator* aDeallocator,
                        TextureFlags aFlags)
 {
+#if(0)
 #ifdef XP_MACOSX
   if (aDesc.type() == SurfaceDescriptor::TSurfaceDescriptorMacIOSurface) {
     const SurfaceDescriptorMacIOSurface& desc =
       aDesc.get_SurfaceDescriptorMacIOSurface();
     return MakeAndAddRef<MacIOSurfaceTextureHostBasic>(aFlags, desc);
   }
+#endif
 #endif
 #ifdef MOZ_WIDGET_GONK
   if (aDesc.type() == SurfaceDescriptor::TSurfaceDescriptorGralloc) {

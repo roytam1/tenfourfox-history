@@ -44,6 +44,10 @@ class TextInputHandler;
 
 - (BOOL)isDragInProgress;
 
+- (void)fireKeyEventForFlagsChanged:(NSEvent*)theEvent keyDown:(BOOL)isKeyDown;
+
+- (void)initTSMDocument;
+
   // Checks whether the view is first responder or not
 - (BOOL)isFirstResponder;
 

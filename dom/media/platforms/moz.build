@@ -86,4 +86,13 @@ if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'android':
         'android/AndroidDecoderModule.cpp',
     ]
 
+EXPORTS += [
+    'minimp3/MiniMP3Module.h',
+]
+SOURCES += [
+    'minimp3/minimp3.c',
+    'minimp3/MiniMP3Decoder.cpp',
+    'minimp3/MiniMP3Module.cpp',
+]
+
 FINAL_LIBRARY = 'xul'

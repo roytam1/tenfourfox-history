@@ -48,6 +48,7 @@
  */
 
 #import <Foundation/Foundation.h>
+#include <unistd.h>
 
 #define SMSLIB_VERSION "1.8"
 

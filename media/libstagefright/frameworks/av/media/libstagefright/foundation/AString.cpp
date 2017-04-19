@@ -298,6 +298,8 @@ int AString::compare(const AString &other) const {
     return strcmp(mData, other.mData);
 }
 
+#if(0)
+// shut up gcc
 void AString::tolower() {
     makeMutable();
 
@@ -305,6 +307,7 @@ void AString::tolower() {
         mData[i] = ::tolower(mData[i]);
     }
 }
+#endif
 
 bool AString::startsWith(const char *prefix) const {
     return !strncmp(mData, prefix, strlen(prefix));

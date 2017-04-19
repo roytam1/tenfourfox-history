@@ -28,13 +28,16 @@
 #define LIBFFI_ASM
 #define L(x) x
 
+/* 64 bit mode not yet supported in TenFourFox. */
+#undef __ppc64__
+
 #if defined(__ppc64__)
 #define MODE_CHOICE(x, y) y
 #else
 #define MODE_CHOICE(x, y) x
 #endif
 
-#define machine_choice	MODE_CHOICE(ppc7400,ppc64)
+#define machine_choice	MODE_CHOICE(ppc750,ppc64)
 
 ; Define some pseudo-opcodes for size-independent load & store of GPRs ...
 #define lgu		MODE_CHOICE(lwzu, ldu)

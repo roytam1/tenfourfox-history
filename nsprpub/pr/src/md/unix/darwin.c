@@ -109,5 +109,39 @@ _MD_CREATE_THREAD(
 }
 #endif /* ! _PR_PTHREADS */
 
+#ifdef _PR_HAVE_ATOMIC_CAS
+
+/* Tobias' PR_Stack* ops from TenFourFox issue 191. */
+#include <libkern/OSAtomic.h>
+
+static OSSpinLock stackLock = OS_SPINLOCK_INIT;
+    
+PR_IMPLEMENT(void)
+PR_StackPush(PRStack *stack, PRStackElem *stack_elem)
+{
+    OSSpinLockLock(&stackLock);
+    stack_elem->prstk_elem_next = stack->prstk_head.prstk_elem_next;
+    stack->prstk_head.prstk_elem_next = stack_elem;
+    OSSpinLockUnlock(&stackLock);
+    return;
+}
+    
+PR_IMPLEMENT(PRStackElem *)
+PR_StackPop(PRStack *stack)
+{
+    PRStackElem *element;
+
+    OSSpinLockLock(&stackLock);
+    element = stack->prstk_head.prstk_elem_next;
+    if (element != NULL) {
+        stack->prstk_head.prstk_elem_next = element->prstk_elem_next;
+        element->prstk_elem_next = NULL;        /* debugging aid */
+    }
+    OSSpinLockUnlock(&stackLock);
+    return element;
+}
+
+#endif  /* _PR_HAVE_ATOMIC_CAS */
+
 /* darwin.c */
 

@@ -1136,13 +1136,19 @@ gfxPlatform::SupportsAzureContentForDrawTarget(DrawTarget* aTarget)
 bool
 gfxPlatform::UseAcceleratedSkiaCanvas()
 {
+#if(0)
   return gfxPrefs::CanvasAzureAccelerated() &&
          mPreferredCanvasBackend == BackendType::SKIA;
+#endif
+  return false;
 }
 
 bool gfxPlatform::HaveChoiceOfHWAndSWCanvas()
 {
+#if(0)
   return mPreferredCanvasBackend == BackendType::SKIA;
+#endif
+  return false;
 }
 
 void
@@ -2019,6 +2025,7 @@ gfxPlatform::CanUseDirect3D11ANGLE()
 bool
 gfxPlatform::ShouldUseLayersAcceleration()
 {
+#if(0)
   const char *acceleratedEnv = PR_GetEnv("MOZ_ACCELERATED");
   if (gfxPrefs::LayersAccelerationDisabled() ||
       InSafeMode() ||
@@ -2035,6 +2042,7 @@ gfxPlatform::ShouldUseLayersAcceleration()
   if (acceleratedEnv && *acceleratedEnv != '0') {
     return true;
   }
+#endif // not supported
   return false;
 }
 

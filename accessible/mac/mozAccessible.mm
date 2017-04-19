@@ -48,6 +48,10 @@ using namespace mozilla::a11y;
 // - NSAccessibilityMathPrescriptsAttribute @"AXMathPrescripts"
 // - NSAccessibilityMathPostscriptsAttribute @"AXMathPostscripts"
 
+/* Stubs for 10.4 SDK */
+#define numberWithInteger numberWithInt
+#define numberWithUnsignedInteger numberWithUnsignedInt
+
 // returns the passed in object if it is not ignored. if it's ignored, will return
 // the first unignored ancestor.
 static inline id
@@ -553,7 +557,7 @@ ConvertToNSArray(nsTArray<ProxyAccessible*>& aArray)
   NSPoint tmpPoint = NSMakePoint(point.x,
                                  [mainView frame].size.height - point.y);
   LayoutDeviceIntPoint geckoPoint = nsCocoaUtils::
-    CocoaPointsToDevPixels(tmpPoint, nsCocoaUtils::GetBackingScaleFactor(mainView));
+    CocoaPointsToDevPixels(tmpPoint);
 
   mozAccessible* nativeChild = nil;
   if (accWrap) {
@@ -720,9 +724,9 @@ ConvertToNSArray(nsTArray<ProxyAccessible*>& aArray)
     return nil;
 
   NSScreen* mainView = [[NSScreen screens] objectAtIndex:0];
-  CGFloat scaleFactor = nsCocoaUtils::GetBackingScaleFactor(mainView);
-  NSPoint p = NSMakePoint(static_cast<CGFloat>(rect.x) / scaleFactor,
-                         [mainView frame].size.height - static_cast<CGFloat>(rect.y + rect.height) / scaleFactor);
+  //CGFloat scaleFactor = nsCocoaUtils::GetBackingScaleFactor(mainView);
+  NSPoint p = NSMakePoint(static_cast<CGFloat>(rect.x),
+                         [mainView frame].size.height - static_cast<CGFloat>(rect.y + rect.height));
 
   return [NSValue valueWithPoint:p];
 
@@ -741,10 +745,10 @@ ConvertToNSArray(nsTArray<ProxyAccessible*>& aArray)
   else
     return nil;
 
-  CGFloat scaleFactor =
-    nsCocoaUtils::GetBackingScaleFactor([[NSScreen screens] objectAtIndex:0]);
-  return [NSValue valueWithSize:NSMakeSize(static_cast<CGFloat>(rect.width) / scaleFactor,
-                                           static_cast<CGFloat>(rect.height) / scaleFactor)];
+  //CGFloat scaleFactor =
+  //  nsCocoaUtils::GetBackingScaleFactor([[NSScreen screens] objectAtIndex:0]);
+  return [NSValue valueWithSize:NSMakeSize(static_cast<CGFloat>(rect.width),
+                                           static_cast<CGFloat>(rect.height))];
 
   NS_OBJC_END_TRY_ABORT_BLOCK_NIL;
 }

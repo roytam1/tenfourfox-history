@@ -270,6 +270,7 @@ AsmJSModule::lookupHeapAccess(void* pc) const
 bool
 AsmJSModule::finish(ExclusiveContext* cx, TokenStream& tokenStream, MacroAssembler& masm)
 {
+#if(0)
     MOZ_ASSERT(!isFinished());
 
     uint32_t endBeforeCurly = tokenStream.currentToken().pos.end;
@@ -380,6 +381,9 @@ AsmJSModule::finish(ExclusiveContext* cx, TokenStream& tokenStream, MacroAssembl
 #endif
 
     return true;
+#else
+    return false;
+#endif
 }
 
 void
@@ -1751,6 +1755,7 @@ AsmJSModule::heapLength() const
 void
 AsmJSModule::setProfilingEnabled(bool enabled, JSContext* cx)
 {
+#if(0)
     MOZ_ASSERT(isDynamicallyLinked());
 
     if (profilingEnabled_ == enabled)
@@ -1808,7 +1813,8 @@ AsmJSModule::setProfilingEnabled(bool enabled, JSContext* cx)
         MOZ_CRASH();
         void* callee = nullptr;
 #else
-# error "Missing architecture"
+//# error "Missing architecture"
+#warning "Bite me, Mozilla"
 #endif
 
         const CodeRange* codeRange = lookupCodeRange(callee);
@@ -1833,7 +1839,8 @@ AsmJSModule::setProfilingEnabled(bool enabled, JSContext* cx)
 #elif defined(JS_CODEGEN_NONE)
         MOZ_CRASH();
 #else
-# error "Missing architecture"
+//# error "Missing architecture"
+#warning "Bite me big, Mozilla"
 #endif
     }
 
@@ -1918,7 +1925,8 @@ AsmJSModule::setProfilingEnabled(bool enabled, JSContext* cx)
 #elif defined(JS_CODEGEN_NONE)
         MOZ_CRASH();
 #else
-# error "Missing architecture"
+//# error "Missing architecture"
+#warning "Bite me yuge, Mozilla"
 #endif
     }
 
@@ -1945,6 +1953,7 @@ AsmJSModule::setProfilingEnabled(bool enabled, JSContext* cx)
     }
 
     profilingEnabled_ = enabled;
+#endif
 }
 
 static bool

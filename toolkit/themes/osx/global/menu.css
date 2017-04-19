@@ -82,22 +82,40 @@ menuitem[src] > .menu-iconic-left > .menu-iconic-icon {
 .menu-right,
 .menu-accel-container {
   -moz-margin-start: 21px;
-  -moz-margin-end: -9px;
   -moz-box-pack: end;
 }
 
 /* The native menuarrow we use is 9px wide on 10.7+ and 8px wide on 10.6,
  * so it needs to be 'pulled in' one pixel more by the negative margin in
  * order to align properly: */
+/*
 @media not all and (-moz-mac-lion-theme) {
   .menu-right {
     -moz-margin-end: -10px;
   }
 }
+*/
+.menu-accel-container {
+  -moz-margin-end: -9px;
+}
 
 .menu-right {
-  list-style-image: none;
-  -moz-appearance: menuarrow;
+  -moz-margin-end: -10px;
+  width: 9px;
+  list-style-image: url("chrome://global/skin/menu/menu-arrow.png");
+  -moz-image-region: rect(0, 9px, 10px, 0);
+}
+
+.menu-right[_moz-menuactive="true"]:not([disabled="true"]) {
+  -moz-image-region: rect(0, 18px, 10px, 9px);
+}
+
+.menu-right[disabled="true"] {
+  -moz-image-region: rect(0, 27px, 10px, 18px);
+}
+
+.menu-right:-moz-locale-dir(rtl) {
+  transform: scaleX(-1);
 }
 
 /* ::::: menu/menuitems in menubar ::::: */
@@ -167,9 +185,23 @@ menulist[editable="true"] > menupopup > :-moz-any(menuitem, menucaption) > .menu
 
 /* ::::: checked menuitems ::::: */
 
-:not(menulist) > menupopup > menuitem[checked="true"],
-:not(menulist) > menupopup > menuitem[selected="true"] {
-  -moz-appearance: checkmenuitem;
+/* backout bug 1012445 */
+:not(menulist) > menupopup > menuitem[checked="true"] > .menu-iconic-left,
+:not(menulist) > menupopup > menuitem[selected="true"] > .menu-iconic-left {
+  padding-top: 1px;
+  -moz-margin-start: -15px;
+  -moz-padding-start: 15px;
+  background: -moz-image-rect("chrome://global/skin/menu/menu-check.png", 0, 11, 11, 0) bottom left no-repeat transparent;
+}
+
+:not(menulist) > menupopup > menuitem[checked="true"] > .menu-iconic-left:-moz-locale-dir(rtl),
+:not(menulist) > menupopup > menuitem[selected="true"] > .menu-iconic-left:-moz-locale-dir(rtl) {
+  background-position: bottom right;
+}
+
+:not(menulist) > menupopup > menuitem[checked="true"][_moz-menuactive="true"]:not([disabled="true"]) > .menu-iconic-left,
+:not(menulist) > menupopup > menuitem[selected="true"][_moz-menuactive="true"]:not([disabled="true"]) > .menu-iconic-left {
+  background-image: -moz-image-rect("chrome://global/skin/menu/menu-check.png", 0, 22, 11, 11);
 }
 
 menulist:not([editable="true"]) > menupopup > menuitem[checked="true"]::before,

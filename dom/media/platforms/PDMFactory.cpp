@@ -22,6 +22,7 @@
 #include "AndroidDecoderModule.h"
 #endif
 #include "GMPDecoderModule.h"
+#include "MiniMP3Module.h"
 
 #include "mozilla/Preferences.h"
 #include "mozilla/TaskQueue.h"
@@ -285,6 +286,9 @@ PDMFactory::CreatePDMs()
   }
 #endif
 
+  m = new MiniMP3Module();
+  StartupPDM(m);
+  
   m = new AgnosticDecoderModule();
   StartupPDM(m);
 

@@ -80,6 +80,8 @@ static nsresult toCFURLRef(nsIFile* file, CFURLRef& outURL)
 
 bool nsPluginsDir::IsPluginFile(nsIFile* file)
 {
+  return false; // plugins dead! plugins bad!
+#if(0)
   nsCString fileName;
   file->GetNativeLeafName(fileName);
   /*
@@ -91,6 +93,7 @@ bool nsPluginsDir::IsPluginFile(nsIFile* file)
     return false;
   }
   return true;
+#endif
 }
 
 // Caller is responsible for freeing returned buffer.

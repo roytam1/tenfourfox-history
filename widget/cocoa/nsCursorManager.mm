@@ -236,11 +236,12 @@ static const nsCursor sCustomCursor = eCursorCount;
   NS_OBJC_END_TRY_ABORT_BLOCK_NSRESULT;
 }
 
-- (nsresult) setCursorWithImage: (imgIContainer*) aCursorImage hotSpotX: (uint32_t) aHotspotX hotSpotY: (uint32_t) aHotspotY scaleFactor: (CGFloat) scaleFactor
+- (nsresult) setCursorWithImage: (imgIContainer*) aCursorImage hotSpotX: (uint32_t) aHotspotX hotSpotY: (uint32_t) aHotspotY
 {
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK_NSRESULT;
   // As the user moves the mouse, this gets called repeatedly with the same aCursorImage
-  if (sCursorImgContainer == aCursorImage && sCursorScaleFactor == scaleFactor && mCurrentMacCursor) {
+  //if (sCursorImgContainer == aCursorImage && sCursorScaleFactor == scaleFactor && mCurrentMacCursor) {
+  if (sCursorImgContainer == aCursorImage && mCurrentMacCursor) {
     [self setMacCursor:mCurrentMacCursor];
     return NS_OK;
   }
@@ -255,7 +256,7 @@ static const nsCursor sCustomCursor = eCursorCount;
   }
 
   NSImage *cursorImage;
-  nsresult rv = nsCocoaUtils::CreateNSImageFromImageContainer(aCursorImage, imgIContainer::FRAME_FIRST, &cursorImage, scaleFactor);
+  nsresult rv = nsCocoaUtils::CreateNSImageFromImageContainer(aCursorImage, imgIContainer::FRAME_FIRST, &cursorImage);
   if (NS_FAILED(rv) || !cursorImage) {
     return NS_ERROR_FAILURE;
   }
@@ -270,7 +271,7 @@ static const nsCursor sCustomCursor = eCursorCount;
   
   NS_IF_RELEASE(sCursorImgContainer);
   sCursorImgContainer = aCursorImage;
-  sCursorScaleFactor = scaleFactor;
+  //sCursorScaleFactor = scaleFactor;
   NS_ADDREF(sCursorImgContainer);
   
   return NS_OK;

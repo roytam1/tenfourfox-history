@@ -16625,6 +16625,8 @@ for arch in $ax_gcc_arch; do
   else
     flags="-march=$arch -mcpu=$arch -m$arch"
   fi
+  # oh, f**k me. force using the provided compiler flags with a dummy one.
+  flags="-fomit-frame-pointer"
   for flag in $flags; do
     as_CACHEVAR=`$as_echo "ax_cv_check_cflags__$flag" | $as_tr_sh`
 { $as_echo "$as_me:${as_lineno-$LINENO}: checking whether C compiler accepts $flag" >&5

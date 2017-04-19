@@ -73,6 +73,7 @@
 
 //-----------------------------------------------------------------------------
 #include "mozilla/net/HttpChannelChild.h"
+#include "OptimizedFor.h" // 10.4Fx
 
 
 #define UA_PREF_PREFIX          "general.useragent."
@@ -656,6 +657,11 @@ nsHttpHandler::BuildUserAgent()
                            mCompatFirefox.Length() +
                            mCompatDevice.Length() +
                            mDeviceModelId.Length() +
+#ifdef FX104_OPTIMIZED_FOR
+                           // needs to be length of SP "TenFourFox/Debugging"
+                           // this is the longest string we support
+                           21 +
+#endif
                            13);
 
     // Application portion
@@ -706,6 +712,10 @@ nsHttpHandler::BuildUserAgent()
         mUserAgent += '/';
         mUserAgent += mAppVersion;
     }
+
+#ifdef FX104_OPTIMIZED_FOR
+    mUserAgent.AppendLiteral(" TenFourFox/" FX104_OPTIMIZED_FOR );
+#endif
 }
 
 #ifdef XP_WIN

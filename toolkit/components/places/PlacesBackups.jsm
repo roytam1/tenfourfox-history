@@ -352,7 +352,7 @@ this.PlacesBackups = {
         let mostRecentBackupFile = yield this.getMostRecentBackup();
         if (!mostRecentBackupFile ||
             hash != getHashFromFilename(OS.Path.basename(mostRecentBackupFile))) {
-          let name = this.getFilenameForDate(undefined, true);
+          let name = this.getFilenameForDate(undefined, false /*true issue 307*/);
           let newFilename = appendMetaDataToFilename(name,
                                                      { count: nodeCount,
                                                        hash: hash });
@@ -374,7 +374,7 @@ this.PlacesBackups = {
             this._backupFiles.unshift(newFilePath);
           }
           let jsonString = yield OS.File.read(aFilePath);
-          yield OS.File.writeAtomic(newFilePath, jsonString, { compression: "lz4" });
+          yield OS.File.writeAtomic(newFilePath, jsonString /*, { compression: "lz4" }*/);
         }
       }
 
@@ -421,7 +421,7 @@ this.PlacesBackups = {
       // Ensure to initialize _backupFiles
       if (!this._backupFiles)
         yield this.getBackupFiles();
-      let newBackupFilename = this.getFilenameForDate(undefined, true);
+      let newBackupFilename = this.getFilenameForDate(undefined, false /*true issue 307 */);
       // If we already have a backup for today we should do nothing, unless we
       // were required to enforce a new backup.
       let backupFile = yield getBackupFileForSameDate(newBackupFilename);
@@ -448,7 +448,7 @@ this.PlacesBackups = {
       try {
         let { count: nodeCount, hash: hash } =
           yield BookmarkJSONUtils.exportToFile(newBackupFile,
-                                               { compress: true,
+                                               { compress: false, //true, // issue 307 workaround
                                                  failIfHashIs: mostRecentHash });
         newFilenameWithMetaData = appendMetaDataToFilename(newBackupFilename,
                                                            { count: nodeCount,

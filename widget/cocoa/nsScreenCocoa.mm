@@ -37,6 +37,7 @@ nsScreenCocoa::GetId(uint32_t *outId)
   return NS_OK;
 
   NS_OBJC_END_TRY_ABORT_BLOCK;
+return NS_OK; // shut up, gcc
 }
 
 NS_IMETHODIMP
@@ -45,7 +46,7 @@ nsScreenCocoa::GetRect(int32_t *outX, int32_t *outY, int32_t *outWidth, int32_t 
   NSRect frame = [mScreen frame];
 
   LayoutDeviceIntRect r =
-    nsCocoaUtils::CocoaRectToGeckoRectDevPix(frame, BackingScaleFactor());
+    nsCocoaUtils::CocoaRectToGeckoRectDevPix(frame);
 
   *outX = r.x;
   *outY = r.y;
@@ -61,7 +62,7 @@ nsScreenCocoa::GetAvailRect(int32_t *outX, int32_t *outY, int32_t *outWidth, int
   NSRect frame = [mScreen visibleFrame];
 
   LayoutDeviceIntRect r =
-    nsCocoaUtils::CocoaRectToGeckoRectDevPix(frame, BackingScaleFactor());
+    nsCocoaUtils::CocoaRectToGeckoRectDevPix(frame);
 
   *outX = r.x;
   *outY = r.y;
@@ -140,8 +141,10 @@ nsScreenCocoa::GetContentsScaleFactor(double *aContentsScaleFactor)
   NS_OBJC_END_TRY_ABORT_BLOCK_NSRESULT;
 }
 
+inline
 CGFloat
 nsScreenCocoa::BackingScaleFactor()
 {
-  return nsCocoaUtils::GetBackingScaleFactor(mScreen);
+  return 1.0f;
+  //return nsCocoaUtils::GetBackingScaleFactor(mScreen);
 }

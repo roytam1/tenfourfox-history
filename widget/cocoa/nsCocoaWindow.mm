@@ -43,6 +43,16 @@
 #include "mozilla/BasicEvents.h"
 #include "mozilla/Preferences.h"
 #include <algorithm>
+#include <objc/objc-class.h>
+#include <objc/objc-runtime.h>
+
+extern "C" {
+	IMP class_lookupMethod(Class, SEL);
+};
+#define class_getMethodImplementation(x,y) class_lookupMethod(x,y)
+extern "C" {
+	bool _NSHandleCarbonMenuEvent(EventRef x);
+};
 
 namespace mozilla {
 namespace layers {
@@ -295,11 +305,13 @@ nsresult nsCocoaWindow::Create(nsIWidget* aParent,
     }
     // now we can convert newBounds to device pixels for the window we created,
     // as the child view expects a rect expressed in the dev pix of its parent
+#if(0)
     double scale = BackingScaleFactor();
     newBounds.x *= scale;
     newBounds.y *= scale;
     newBounds.width *= scale;
     newBounds.height *= scale;
+#endif
     return CreatePopupContentView(newBounds);
   }
 
@@ -443,6 +455,13 @@ nsresult nsCocoaWindow::CreateNativeWindow(const NSRect &aRect,
   mWindow = [[windowClass alloc] initWithContentRect:contentRect styleMask:features 
                                  backing:NSBackingStoreBuffered defer:YES];
 
+  // We have to hold onto this window if it's a menupopup, because if it is
+  // hidden and later becomes visible it can crash us. -- Cameron
+  if (mWindowType == eWindowType_popup &&
+	!(nsCocoaFeatures::OnLeopardOrLater()) && // Only 10.4: 10.4Fx issue 72
+	!([mWindow isVisible] || mSheetNeedsShow)) // ::IsVisible() XXX
+		[mWindow retain]; // 10.4Fx issue 9
+
   // setup our notification delegate. Note that setDelegate: does NOT retain.
   mDelegate = [[WindowDelegate alloc] initWithGeckoWindow:this];
   [mWindow setDelegate:mDelegate];
@@ -552,7 +571,8 @@ NS_IMETHODIMP nsCocoaWindow::Destroy()
     if (mInNativeFullScreenMode) {
       DestroyNativeWindow();
     } else if (mWindow) {
-      nsCocoaUtils::HideOSChromeOnScreen(false);
+      // Restore the screen argument from 38; see nsCocoaUtils.
+      nsCocoaUtils::HideOSChromeOnScreen(false, [mWindow screen]);
     }
   }
 
@@ -702,6 +722,12 @@ NS_IMETHODIMP nsCocoaWindow::SetFakeModal(bool aState)
     return SetModal(aState);
 }
 
+bool
+nsCocoaWindow::IsRunningAppModal()
+{
+  return [NSApp _isRunningAppModal];
+}
+
 // Hide or show this window
 NS_IMETHODIMP nsCocoaWindow::Show(bool bState)
 {
@@ -748,6 +774,7 @@ NS_IMETHODIMP nsCocoaWindow::Show(bool bState)
           parentIsSheet) {
         piParentWidget->GetSheetWindowParent(&topNonSheetWindow);
         [NSApp endSheet:nativeParentWindow];
+        [nativeParentWindow setAcceptsMouseMovedEvents:NO]; // bug 675208
       }
 
       nsCocoaWindow* sheetShown = nullptr;
@@ -762,6 +789,7 @@ NS_IMETHODIMP nsCocoaWindow::Show(bool bState)
           // Only set contextInfo if our parent isn't a sheet.
           NSWindow* contextInfo = parentIsSheet ? nil : mSheetWindowParent;
           [TopLevelWindowData deactivateInWindow:mSheetWindowParent];
+          [mWindow setAcceptsMouseMovedEvents:YES]; // bug 675208
           [NSApp beginSheet:mWindow
              modalForWindow:mSheetWindowParent
               modalDelegate:mDelegate
@@ -788,6 +816,7 @@ NS_IMETHODIMP nsCocoaWindow::Show(bool bState)
       NSInteger windowNumber = [mWindow windowNumber];
       [mWindow _setWindowNumber:-1];
       [mWindow _setWindowNumber:windowNumber];
+      [mWindow setAcceptsMouseMovedEvents:YES];
       // For reasons that aren't yet clear, calls to [NSWindow orderFront:] or
       // [NSWindow makeKeyAndOrderFront:] can sometimes trigger "Error (1000)
       // creating CGSWindow", which in turn triggers an internal inconsistency
@@ -821,6 +850,7 @@ NS_IMETHODIMP nsCocoaWindow::Show(bool bState)
     }
     else {
       NS_OBJC_BEGIN_TRY_LOGONLY_BLOCK;
+      [mWindow setAcceptsMouseMovedEvents:YES];
       if (mWindowType == eWindowType_toplevel &&
           [mWindow respondsToSelector:@selector(setAnimationBehavior:)]) {
         NSWindowAnimationBehavior behavior;
@@ -866,6 +896,8 @@ NS_IMETHODIMP nsCocoaWindow::Show(bool bState)
         // hide the sheet
         [NSApp endSheet:mWindow];
         
+        [mWindow setAcceptsMouseMovedEvents:NO];
+
         [TopLevelWindowData deactivateInWindow:mWindow];
 
         nsCocoaWindow* siblingSheetToShow = nullptr;
@@ -895,6 +927,7 @@ NS_IMETHODIMP nsCocoaWindow::Show(bool bState)
           // If there are no sibling sheets, but the parent is a sheet, restore
           // it.  It wasn't sent any deactivate events when it was hidden, so
           // don't call through Show, just let the OS put it back up.
+	  [nativeParentWindow setAcceptsMouseMovedEvents:YES];
           [NSApp beginSheet:nativeParentWindow
              modalForWindow:sheetParent
               modalDelegate:[nativeParentWindow delegate]
@@ -907,6 +940,7 @@ NS_IMETHODIMP nsCocoaWindow::Show(bool bState)
           NS_OBJC_BEGIN_TRY_LOGONLY_BLOCK;
           [sheetParent makeKeyAndOrderFront:nil];
           NS_OBJC_END_TRY_LOGONLY_BLOCK;
+	  [sheetParent setAcceptsMouseMovedEvents:YES];
         }
         SendSetZLevelEvent();
       }
@@ -930,6 +964,10 @@ NS_IMETHODIMP nsCocoaWindow::Show(bool bState)
       // uses it for a different purpose).
       if (mWindowType == eWindowType_popup)
         [NSApp _removeWindowFromCache:mWindow];
+
+      // it's very important to turn off mouse moved events when hiding a window, otherwise
+      // the windows' tracking rects will interfere with each other. (bug 356528)
+      [mWindow setAcceptsMouseMovedEvents:NO];
 
       // If our popup window is a non-native context menu, tell the OS (and
       // other programs) that a menu has closed.
@@ -1006,6 +1044,7 @@ static const NSUInteger kWindowBackgroundBlurRadius = 4;
 void
 nsCocoaWindow::SetWindowBackgroundBlur()
 {
+#if(0)
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK;
 
   if (!mWindow || ![mWindow isVisible] || [mWindow windowNumber] == -1)
@@ -1020,6 +1059,9 @@ nsCocoaWindow::SetWindowBackgroundBlur()
   CGSSetWindowBackgroundBlurRadius(cid, [mWindow windowNumber], kWindowBackgroundBlurRadius);
 
   NS_OBJC_END_TRY_ABORT_BLOCK;
+#else
+  return; // Not supported on 10.4.
+#endif
 }
 
 nsresult
@@ -1154,27 +1196,27 @@ void nsCocoaWindow::SetSizeConstraints(const SizeConstraints& aConstraints)
     (mWindowType == eWindowType_popup) ? NSZeroRect : NSMakeRect(0.0, 0.0, 60, 60);
   rect = [mWindow frameRectForContentRect:rect];
 
-  CGFloat scaleFactor = BackingScaleFactor();
+  //CGFloat scaleFactor = BackingScaleFactor();
 
   SizeConstraints c = aConstraints;
   c.mMinSize.width =
-    std::max(nsCocoaUtils::CocoaPointsToDevPixels(rect.size.width, scaleFactor),
+    std::max(nsCocoaUtils::CocoaPointsToDevPixels(rect.size.width),
            c.mMinSize.width);
   c.mMinSize.height =
-    std::max(nsCocoaUtils::CocoaPointsToDevPixels(rect.size.height, scaleFactor),
+    std::max(nsCocoaUtils::CocoaPointsToDevPixels(rect.size.height),
            c.mMinSize.height);
 
   NSSize minSize = {
-    nsCocoaUtils::DevPixelsToCocoaPoints(c.mMinSize.width, scaleFactor),
-    nsCocoaUtils::DevPixelsToCocoaPoints(c.mMinSize.height, scaleFactor)
+    nsCocoaUtils::DevPixelsToCocoaPoints(c.mMinSize.width),
+    nsCocoaUtils::DevPixelsToCocoaPoints(c.mMinSize.height)
   };
   [mWindow setMinSize:minSize];
 
   NSSize maxSize = {
     c.mMaxSize.width == NS_MAXSIZE ?
-      FLT_MAX : nsCocoaUtils::DevPixelsToCocoaPoints(c.mMaxSize.width, scaleFactor),
+      FLT_MAX : nsCocoaUtils::DevPixelsToCocoaPoints(c.mMaxSize.width),
     c.mMaxSize.height == NS_MAXSIZE ?
-      FLT_MAX : nsCocoaUtils::DevPixelsToCocoaPoints(c.mMaxSize.height, scaleFactor)
+      FLT_MAX : nsCocoaUtils::DevPixelsToCocoaPoints(c.mMaxSize.height)
   };
   [mWindow setMaxSize:maxSize];
 
@@ -1332,7 +1374,7 @@ private:
 
 NS_IMPL_ISUPPORTS0(FullscreenTransitionData)
 
-@interface FullscreenTransitionDelegate : NSObject <NSAnimationDelegate>
+@interface FullscreenTransitionDelegate : NSObject // <NSAnimationDelegate>
 {
 @public
   nsCocoaWindow* mWindow;
@@ -1366,6 +1408,8 @@ NS_IMPL_ISUPPORTS0(FullscreenTransitionData)
 /* virtual */ bool
 nsCocoaWindow::PrepareForFullscreenTransition(nsISupports** aData)
 {
+return false; // unsupported
+#if(0)
   nsCOMPtr<nsIScreen> widgetScreen = GetWidgetScreen();
   nsScreenCocoa* screen = static_cast<nsScreenCocoa*>(widgetScreen.get());
   NSScreen* cocoaScreen = screen->CocoaScreen();
@@ -1385,6 +1429,7 @@ nsCocoaWindow::PrepareForFullscreenTransition(nsISupports** aData)
   *aData = data;
   NS_ADDREF(data);
   return true;
+#endif
 }
 
 /* virtual */ void
@@ -1393,6 +1438,8 @@ nsCocoaWindow::PerformFullscreenTransition(FullscreenTransitionStage aStage,
                                            nsISupports* aData,
                                            nsIRunnable* aCallback)
 {
+// We don't have CoreAnimation, so essentially, don't do anything!
+#if(0)
   auto data = static_cast<FullscreenTransitionData*>(aData);
   FullscreenTransitionDelegate* delegate =
     [[FullscreenTransitionDelegate alloc] init];
@@ -1415,6 +1462,7 @@ nsCocoaWindow::PerformFullscreenTransition(FullscreenTransitionStage aStage,
   [mFullscreenTransitionAnimation setDelegate:delegate];
   [mFullscreenTransitionAnimation setDuration:aDuration / 1000.0];
   [mFullscreenTransitionAnimation startAnimation];
+#endif
 }
 
 void nsCocoaWindow::EnteredFullScreen(bool aFullScreen, bool aNativeMode)
@@ -1504,7 +1552,8 @@ nsCocoaWindow::DoMakeFullScreen(bool aFullScreen, bool aUseSystemTransition)
     // The order here matters. When we exit full screen mode, we need to show the
     // Dock first, otherwise the newly-created window won't have its minimize
     // button enabled. See bug 526282.
-    nsCocoaUtils::HideOSChromeOnScreen(aFullScreen);
+    // Screen argument restored for 10.4.
+    nsCocoaUtils::HideOSChromeOnScreen(aFullScreen, [mWindow screen]);
     nsresult rv = nsBaseWidget::MakeFullScreen(aFullScreen);
     NSEnableScreenUpdates();
     NS_ENSURE_SUCCESS(rv, rv);
@@ -1534,14 +1583,14 @@ nsresult nsCocoaWindow::DoResize(double aX, double aY,
 
   // ConstrainSize operates in device pixels, so we need to convert using
   // the backing scale factor here
-  CGFloat scale = BackingScaleFactor();
-  int32_t width = NSToIntRound(aWidth * scale);
-  int32_t height = NSToIntRound(aHeight * scale);
+  //CGFloat scale = BackingScaleFactor();
+  int32_t width = NSToIntRound(aWidth);
+  int32_t height = NSToIntRound(aHeight);
   ConstrainSize(&width, &height);
 
   LayoutDeviceIntRect newBounds(NSToIntRound(aX), NSToIntRound(aY),
-                                NSToIntRound(width / scale),
-                                NSToIntRound(height / scale));
+                                width, //NSToIntRound(width / scale),
+                                height); //NSToIntRound(height / scale));
 
   // constrain to the screen that contains the largest area of the new rect
   FitRectToVisibleAreaForScreen(newBounds, aConstrainToCurrentScreen ?
@@ -1591,9 +1640,9 @@ NS_IMETHODIMP nsCocoaWindow::GetClientBounds(mozilla::LayoutDeviceIntRect& aRect
 {
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK_NSRESULT;
 
-  CGFloat scaleFactor = BackingScaleFactor();
+  //CGFloat scaleFactor = BackingScaleFactor();
   if (!mWindow) {
-    aRect = nsCocoaUtils::CocoaRectToGeckoRectDevPix(NSZeroRect, scaleFactor);
+    aRect = nsCocoaUtils::CocoaRectToGeckoRectDevPix(NSZeroRect);
     return NS_OK;
   }
 
@@ -1605,7 +1654,7 @@ NS_IMETHODIMP nsCocoaWindow::GetClientBounds(mozilla::LayoutDeviceIntRect& aRect
     r = [mWindow contentRectForFrameRect:[mWindow frame]];
   }
 
-  aRect = nsCocoaUtils::CocoaRectToGeckoRectDevPix(r, scaleFactor);
+  aRect = nsCocoaUtils::CocoaRectToGeckoRectDevPix(r);
 
   return NS_OK;
 
@@ -1620,7 +1669,7 @@ nsCocoaWindow::UpdateBounds()
     frame = [mWindow frame];
   }
   mBounds = nsCocoaUtils::CocoaRectToGeckoRectDevPix(
-    frame, BackingScaleFactor()).ToUnknownRect();
+    frame).ToUnknownRect();
 }
 
 NS_IMETHODIMP nsCocoaWindow::GetScreenBounds(LayoutDeviceIntRect &aRect)
@@ -1628,7 +1677,7 @@ NS_IMETHODIMP nsCocoaWindow::GetScreenBounds(LayoutDeviceIntRect &aRect)
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK_NSRESULT;
 
 #ifdef DEBUG
-  LayoutDeviceIntRect r = nsCocoaUtils::CocoaRectToGeckoRectDevPix([mWindow frame], BackingScaleFactor());
+  LayoutDeviceIntRect r = nsCocoaUtils::CocoaRectToGeckoRectDevPix([mWindow frame]);
   NS_ASSERTION(mWindow && mBounds == r.ToUnknownRect(), "mBounds out of sync!");
 #endif
 
@@ -1638,6 +1687,7 @@ NS_IMETHODIMP nsCocoaWindow::GetScreenBounds(LayoutDeviceIntRect &aRect)
   NS_OBJC_END_TRY_ABORT_BLOCK_NSRESULT;
 }
 
+#if(0)
 double
 nsCocoaWindow::GetDefaultScaleInternal()
 {
@@ -1647,6 +1697,7 @@ nsCocoaWindow::GetDefaultScaleInternal()
 static CGFloat
 GetBackingScaleFactor(NSWindow* aWindow)
 {
+#if(0)
   NSRect frame = [aWindow frame];
   if (frame.size.width > 0 && frame.size.height > 0) {
     return nsCocoaUtils::GetBackingScaleFactor(aWindow);
@@ -1688,6 +1739,10 @@ GetBackingScaleFactor(NSWindow* aWindow)
     FindTargetScreenForRect(
       LayoutDeviceIntRect::FromUnknownRect(nsCocoaUtils::CocoaRectToGeckoRect(frame)));
   return nsCocoaUtils::GetBackingScaleFactor(screen);
+#else
+    // Screw all that, we've gotta get on with these.
+    return nsCocoaUtils::GetBackingScaleFactor(aWindow);
+#endif
 }
 
 CGFloat
@@ -1753,6 +1808,7 @@ nsCocoaWindow::RoundsWidgetCoordinatesTo()
   }
   return 1;
 }
+#endif
 
 NS_IMETHODIMP nsCocoaWindow::SetCursor(nsCursor aCursor)
 {
@@ -1993,7 +2049,7 @@ NS_IMETHODIMP nsCocoaWindow::SetFocus(bool aState)
     if ([mWindow isMiniaturized]) {
       [mWindow deminiaturize:nil];
     }
-
+    [mWindow setAcceptsMouseMovedEvents:YES];
     [mWindow makeKeyAndOrderFront:nil];
     SendSetZLevelEvent();
   }
@@ -2010,7 +2066,7 @@ LayoutDeviceIntPoint nsCocoaWindow::WidgetToScreenOffset()
   if (mWindow) {
     rect = [mWindow contentRectForFrameRect:[mWindow frame]];
   }
-  r = nsCocoaUtils::CocoaRectToGeckoRectDevPix(rect, BackingScaleFactor());
+  r = nsCocoaUtils::CocoaRectToGeckoRectDevPix(rect);
 
   return r.TopLeft();
 
@@ -2038,12 +2094,12 @@ nsCocoaWindow::ClientToWindowSize(const LayoutDeviceIntSize& aClientSize)
   if (!mWindow)
     return LayoutDeviceIntSize(0, 0);
 
-  CGFloat backingScale = BackingScaleFactor();
+  //CGFloat backingScale = BackingScaleFactor();
   LayoutDeviceIntRect r(0, 0, aClientSize.width, aClientSize.height);
-  NSRect rect = nsCocoaUtils::DevPixelsToCocoaPoints(r, backingScale);
+  NSRect rect = nsCocoaUtils::DevPixelsToCocoaPoints(r);
 
   NSRect inflatedRect = [mWindow frameRectForContentRect:rect];
-  r = nsCocoaUtils::CocoaRectToGeckoRectDevPix(inflatedRect, backingScale);
+  r = nsCocoaUtils::CocoaRectToGeckoRectDevPix(inflatedRect);
   return r.Size();
 
   NS_OBJC_END_TRY_ABORT_BLOCK_RETURN(LayoutDeviceIntSize(0,0));
@@ -2149,6 +2205,8 @@ void nsCocoaWindow::SetShowsToolbarButton(bool aShow)
 void nsCocoaWindow::SetShowsFullScreenButton(bool aShow)
 {
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK;
+  return; // 10.4Fx doesn't support this.
+#if(0)
 
   if (!mWindow || ![mWindow respondsToSelector:@selector(toggleFullScreen:)] ||
       mSupportsNativeFullScreen == aShow) {
@@ -2179,6 +2237,7 @@ void nsCocoaWindow::SetShowsFullScreenButton(bool aShow)
     MakeFullScreen(true);
   }
 
+#endif
   NS_OBJC_END_TRY_ABORT_BLOCK;
 }
 
@@ -2283,6 +2342,26 @@ NS_IMETHODIMP nsCocoaWindow::SynthesizeNativeMouseEvent(LayoutDeviceIntPoint aPo
   NS_OBJC_END_TRY_ABORT_BLOCK_NSRESULT;
 }
 
+// Callback used by the default titlebar and toolbar shading in 10.4Fx.
+// *aIn == 0 at the top of the titlebar/toolbar, *aIn == 1 at the bottom
+/* static */ void
+nsCocoaWindow::UnifiedShading(void* aInfo, const CGFloat* aIn, CGFloat* aOut)
+{
+  UnifiedGradientInfo* info = (UnifiedGradientInfo*)aInfo;
+  // The gradient percentage at the bottom of the titlebar / top of the toolbar
+  float start = info->titlebarHeight / (info->titlebarHeight + info->toolbarHeight - 1);
+  const float startGrey = NativeGreyColorAsFloat(headerStartGrey, info->windowIsMain);
+  const float endGrey = NativeGreyColorAsFloat(headerEndGrey, info->windowIsMain);
+  // *aIn is the gradient percentage of the titlebar or toolbar gradient,
+  // a is the gradient percentage of the whole unified gradient.
+  float a = info->drawTitlebar ? *aIn * start : start + *aIn * (1 - start);
+  float result = (1.0f - a) * startGrey + a * endGrey;
+  aOut[0] = result;
+  aOut[1] = result;
+  aOut[2] = result;
+  aOut[3] = 1.0f;
+}
+
 void nsCocoaWindow::UpdateThemeGeometries(const nsTArray<ThemeGeometry>& aThemeGeometries) {
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK;
 
@@ -2312,6 +2391,8 @@ void nsCocoaWindow::SetPopupWindowLevel()
   }
 }
 
+// Revert bug 807893; 10.4 uses code in nsChildView.
+#if(0)
 nsresult
 nsCocoaWindow::NotifyIMEInternal(const IMENotification& aIMENotification)
 {
@@ -2324,6 +2405,7 @@ nsCocoaWindow::NotifyIMEInternal(const IMENotification& aIMENotification)
       return NS_ERROR_NOT_IMPLEMENTED;
   }
 }
+#endif
 
 NS_IMETHODIMP_(void)
 nsCocoaWindow::SetInputContext(const InputContext& aContext,
@@ -2417,8 +2499,10 @@ nsCocoaWindow::ExecuteNativeKeyBinding(NativeKeyBindingsType aType,
 
 - (void)windowDidResize:(NSNotification *)aNotification
 {
+#if(0)
   BaseWindow* window = [aNotification object];
   [window updateTrackingArea];
+#endif
 
   if (!mGeckoWindow)
     return;
@@ -2433,6 +2517,7 @@ nsCocoaWindow::ExecuteNativeKeyBinding(NativeKeyBindingsType aType,
   if (!mGeckoWindow)
     return;
 
+#if(0)
   // Because of Cocoa's peculiar treatment of zero-size windows (see comments
   // at GetBackingScaleFactor() above), we sometimes have a situation where
   // our concept of backing scale (based on the screen where the zero-sized
@@ -2456,6 +2541,7 @@ nsCocoaWindow::ExecuteNativeKeyBinding(NativeKeyBindingsType aType,
       mGeckoWindow->BackingScaleFactorChanged();
     }
   }
+#endif
 
   mGeckoWindow->ReportMoveEvent();
 }
@@ -2570,11 +2656,15 @@ nsCocoaWindow::ExecuteNativeKeyBinding(NativeKeyBindingsType aType,
   nsChildView* mainChildView =
     static_cast<nsChildView*>([[(BaseWindow*)window mainChildView] widget]);
   if (mainChildView) {
+#if(0)
     if (mainChildView->GetInputContext().IsPasswordEditor()) {
       TextInputHandler::EnableSecureEventInput();
     } else {
       TextInputHandler::EnsureSecureEventInputDisabled();
     }
+#else
+    //[mainChildView viewsWindowDidBecomeKey]; // XXX?
+#endif
   }
 
   NS_OBJC_END_TRY_ABORT_BLOCK;
@@ -2593,7 +2683,11 @@ nsCocoaWindow::ExecuteNativeKeyBinding(NativeKeyBindingsType aType,
   if ([window isSheet])
     [WindowDelegate paintMenubarForWindow:[NSApp mainWindow]];
 
+#if(0)
   TextInputHandler::EnsureSecureEventInputDisabled();
+#else
+  // ChildView should handle it for us.
+#endif
 
   NS_OBJC_END_TRY_ABORT_BLOCK;
 }
@@ -2669,6 +2763,7 @@ nsCocoaWindow::ExecuteNativeKeyBinding(NativeKeyBindingsType aType,
 
 - (void)windowDidChangeBackingProperties:(NSNotification *)aNotification
 {
+#if(0)
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK;
 
   NSWindow *window = (NSWindow *)[aNotification object];
@@ -2683,6 +2778,7 @@ nsCocoaWindow::ExecuteNativeKeyBinding(NativeKeyBindingsType aType,
   }
 
   NS_OBJC_END_TRY_ABORT_BLOCK;
+#endif
 }
 
 - (nsCocoaWindow*)geckoWidget
@@ -2722,6 +2818,9 @@ nsCocoaWindow::ExecuteNativeKeyBinding(NativeKeyBindingsType aType,
 static float
 GetDPI(NSWindow* aWindow)
 {
+  // We don't support this. Cameron
+  return 96.0f;
+#if(0)
   NSScreen* screen = [aWindow screen];
   if (!screen)
     return 96.0f;
@@ -2742,6 +2841,7 @@ GetDPI(NSWindow* aWindow)
   CGFloat backingScale = GetBackingScaleFactor(aWindow);
 
   return dpi * backingScale;
+#endif
 }
 
 @interface NSView(FrameViewMethodSwizzling)
@@ -2799,6 +2899,7 @@ static NSMutableSet *gSwizzledFrameViewClasses = nil;
 
 #endif
 
+#if(0) // Blocks blech! (bug 1045213)
 #if !defined(MAC_OS_X_VERSION_10_8) || \
     MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_8
 
@@ -2808,6 +2909,7 @@ static NSMutableSet *gSwizzledFrameViewClasses = nil;
             drawingHandler:(BOOL (^)(NSRect dstRect))drawingHandler;
 @end
 
+#endif
 #endif
 
 @interface BaseWindow(Private)
@@ -2821,6 +2923,10 @@ static NSMutableSet *gSwizzledFrameViewClasses = nil;
 
 - (id)_cornerMask
 {
+// We don't implement this, so just pass to the super, if it cares.
+// See bug 1045213.
+return [super _cornerMask];
+#if(0)
   if (!mUseMenuStyle) {
     return [super _cornerMask];
   }
@@ -2836,6 +2942,7 @@ static NSMutableSet *gSwizzledFrameViewClasses = nil;
   }];
   [maskImage setCapInsets:insets];
   return maskImage;
+#endif
 }
 
 // The frame of a window is implemented using undocumented NSView subclasses.
@@ -2899,6 +3006,7 @@ static NSMutableSet *gSwizzledFrameViewClasses = nil;
   mScheduledShadowInvalidation = NO;
   mDisabledNeedsDisplay = NO;
   mDPI = GetDPI(self);
+#if(0)
   mTrackingArea = nil;
   mDirtyRect = NSZeroRect;
   mBeingShown = NO;
@@ -2906,6 +3014,12 @@ static NSMutableSet *gSwizzledFrameViewClasses = nil;
   mBrightTitlebarForeground = NO;
   mUseMenuStyle = NO;
   [self updateTrackingArea];
+#else
+  mDirtyRect = NSZeroRect;
+  mBeingShown = NO;
+  mDrawTitle = NO;
+  mBrightTitlebarForeground = NO;
+#endif
 
   return self;
 }
@@ -2949,7 +3063,9 @@ static NSMutableSet *gSwizzledFrameViewClasses = nil;
 {
   [mActiveTitlebarColor release];
   [mInactiveTitlebarColor release];
+#if(0)
   [self removeTrackingArea];
+#endif
   ChildViewMouseTracker::OnDestroyWindow(self);
   [super dealloc];
 }
@@ -2968,7 +3084,9 @@ static const NSString* kStateCollectionBehavior = @"collectionBehavior";
   [self setTitlebarColor:[aState objectForKey:kStateActiveTitlebarColorKey] forActiveWindow:YES];
   [self setTitlebarColor:[aState objectForKey:kStateInactiveTitlebarColorKey] forActiveWindow:NO];
   [self setShowsToolbarButton:[[aState objectForKey:kStateShowsToolbarButton] boolValue]];
+#if(0)
   [self setCollectionBehavior:[[aState objectForKey:kStateCollectionBehavior] unsignedIntValue]];
+#endif
 }
 
 - (NSMutableDictionary*)exportState
@@ -2987,8 +3105,10 @@ static const NSString* kStateCollectionBehavior = @"collectionBehavior";
   }
   [state setObject:[NSNumber numberWithBool:[self showsToolbarButton]]
             forKey:kStateShowsToolbarButton];
+#if(0)
   [state setObject:[NSNumber numberWithUnsignedInt: [self collectionBehavior]]
             forKey:kStateCollectionBehavior];
+#endif
   return state;
 }
 
@@ -3020,7 +3140,9 @@ static const NSString* kStateCollectionBehavior = @"collectionBehavior";
 - (void)setUseBrightTitlebarForeground:(BOOL)aBrightForeground
 {
   mBrightTitlebarForeground = aBrightForeground;
+#if(0)
   [[self standardWindowButton:NSWindowFullScreenButton] setNeedsDisplay:YES];
+#endif
 }
 
 - (BOOL)useBrightTitlebarForeground
@@ -3088,15 +3210,20 @@ static const NSString* kStateCollectionBehavior = @"collectionBehavior";
 
 - (void)removeTrackingArea
 {
+  NS_NOTREACHED("never call removeTrackingArea");
+#if(0)
   if (mTrackingArea) {
     [[self trackingAreaView] removeTrackingArea:mTrackingArea];
     [mTrackingArea release];
     mTrackingArea = nil;
   }
+#endif
 }
 
 - (void)updateTrackingArea
 {
+  NS_NOTREACHED("never call updateTrackingArea");
+#if(0)
   [self removeTrackingArea];
 
   NSView* view = [self trackingAreaView];
@@ -3107,7 +3234,12 @@ static const NSString* kStateCollectionBehavior = @"collectionBehavior";
                                                  owner:self
                                               userInfo:nil];
   [view addTrackingArea:mTrackingArea];
+#endif
 }
+
+// Because we lack a tracking area, it is very unlikely these routines will
+// ever be called in 10.4Fx. We support them but they are essentially dead
+// code since we backed out bug 675208 (no NSTrackingArea in 10.4).
 
 - (void)mouseEntered:(NSEvent*)aEvent
 {
@@ -3375,8 +3507,10 @@ static const NSString* kStateCollectionBehavior = @"collectionBehavior";
     if ([self respondsToSelector:@selector(setBottomCornerRounded:)])
       [self setBottomCornerRounded:nsCocoaFeatures::OnLionOrLater()];
 
+#ifdef NS_LEOPARD_AND_LATER
     [self setAutorecalculatesContentBorderThickness:NO forEdge:NSMaxYEdge];
     [self setContentBorderThickness:0.0f forEdge:NSMaxYEdge];
+#endif
   }
   return self;
 
@@ -3510,8 +3644,12 @@ static const NSString* kStateCollectionBehavior = @"collectionBehavior";
 
 - (void)setSheetAttachmentPosition:(CGFloat)aY
 {
+#if(0)
   CGFloat topMargin = aY - [self titlebarHeight];
   [self setContentBorderThickness:topMargin forEdge:NSMaxYEdge];
+#else
+  NS_WARNING("Sheet positioning not changeable in 10.4");
+#endif
 }
 
 - (void)placeWindowButtons:(NSRect)aRect
@@ -3636,6 +3774,12 @@ static const NSString* kStateCollectionBehavior = @"collectionBehavior";
       break;
   }
 
+#ifdef DEBUG
+#if(0)
+/* this is pretty darn spammy */
+fprintf(stderr, "sendEvent 935\n");
+#endif
+#endif
   [super sendEvent:anEvent];
 }
 
@@ -3653,10 +3797,116 @@ static const NSString* kStateCollectionBehavior = @"collectionBehavior";
   return self;
 }
 
+// Handle 10.4Fx's custom gradient code.
+// Our pattern width is 1 pixel. CoreGraphics can cache and tile for us.
+static const float sPatternWidth = 1.0f;
+
+static void
+DrawTitlebarGradient(CGContextRef aContext, float aTitlebarHeight,
+                     float aTitlebarOrigin, float aToolbarHeight, BOOL aIsMain)
+{
+  // Create and draw a CGShading that uses nsCocoaWindow::UnifiedShading() as its callback.
+  CGFunctionCallbacks callbacks = {0, nsCocoaWindow::UnifiedShading, NULL};
+  UnifiedGradientInfo info = { aTitlebarHeight, aToolbarHeight, aIsMain, YES };
+  CGFunctionRef function = CGFunctionCreate(&info, 1, NULL, 4, NULL, &callbacks);
+  CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceRGB();
+  CGShadingRef shading = CGShadingCreateAxial(colorSpace,
+                                              CGPointMake(0.0f, aTitlebarOrigin + aTitlebarHeight),
+                                              CGPointMake(0.0f, aTitlebarOrigin),
+                                              function, NO, NO);
+  CGColorSpaceRelease(colorSpace);
+  CGFunctionRelease(function);
+  CGContextDrawShading(aContext, shading);
+  CGShadingRelease(shading);
+  // Draw the one pixel border at the bottom of the titlebar.
+  if (aToolbarHeight == 0) {
+    CGRect borderRect = CGRectMake(0.0f, aTitlebarOrigin, sPatternWidth, 1.0f);
+    DrawNativeGreyColorInRect(aContext, headerBorderGrey, borderRect, aIsMain);
+  }
+}
+
+// Pattern draw callback for standard titlebar gradients and solid titlebar colors
+static void
+RepeatedPatternDrawCallback(void* aInfo, CGContextRef aContext)
+{
+  ToolbarWindow *window = (ToolbarWindow*)aInfo;
+
+  // Remember: this context is NOT flipped, so the origin is in the bottom left.
+  float titlebarHeight = [window titlebarHeight];
+  float titlebarOrigin = [window frame].size.height - titlebarHeight;
+ 
+   [NSGraphicsContext saveGraphicsState];
+   [NSGraphicsContext setCurrentContext:[NSGraphicsContext graphicsContextWithGraphicsPort:aContext flipped:NO]];
+ 
+  BOOL isMain = [window isMainWindow];
+  NSColor *titlebarColor = [window titlebarColorForActiveWindow:isMain];
+// 10.4Fx issue 16. We draw the titlebar differently in Tiger because we don't
+// have CoreUI.
+#if(1)
+if (1) { // if (nsCocoaFeatures::OnLeopardOrLater()) { 
+  if (!titlebarColor) {
+    // If the titlebar color is nil, draw the default titlebar shading.
+    DrawTitlebarGradient(aContext, titlebarHeight, titlebarOrigin,
+                         [window unifiedToolbarHeight], isMain);
+  } else {
+    // If the titlebar color is not nil, just set and draw it normally.
+    [titlebarColor set];
+    NSRectFill(NSMakeRect(0.0f, titlebarOrigin, sPatternWidth, titlebarHeight));
+  }
+} else {
+#else
+if(1) {
+#endif
+  if (!titlebarColor) {
+    // If we are main, we use the dark colour. If we aren't, we use the light
+    // colour.
+    // Use our windowFrameColor and adjust gamma slightly to match gradient.
+    if (isMain)
+        [[[NSColor windowFrameColor] blendedColorWithFraction:0.14f ofColor:[NSColor blackColor]] set];
+    else
+        [[[NSColor windowFrameColor] blendedColorWithFraction:0.36f ofColor:[NSColor whiteColor]] set];
+        
+  } else {
+    [titlebarColor set];
+  }
+  NSRectFill(NSMakeRect(0.0f, titlebarOrigin, sPatternWidth, titlebarHeight));
+}
+
+  // Draw the background color of the window everywhere but where the titlebar is.
+  [[window windowBackgroundColor] set];
+  NSRectFill(NSMakeRect(0.0f, 0.0f, 1.0f, titlebarOrigin));
+
+  [NSGraphicsContext restoreGraphicsState];
+}
+ 
+// Pattern draw callback for "drawsContentsIntoWindowFrame" windows
+static void
+ContentPatternDrawCallback(void* aInfo, CGContextRef aContext)
+{
+  ToolbarWindow *window = (ToolbarWindow*)aInfo;
+
+  NSView* view = [[[window contentView] subviews] lastObject];
+  if (!view || ![view isKindOfClass:[ChildView class]])
+    return;
+
+  // Gecko drawing assumes flippedness, but the current context isn't flipped
+  // (because we're painting into the window's border view, which is not a
+  // ChildView, so it isn't flpped).
+  // So we need to set a flip transform.
+  CGContextScaleCTM(aContext, 1.0f, -1.0f);
+  CGContextTranslateCTM(aContext, 0.0f, -[window frame].size.height);
+
+  NSRect titlebarRect = NSMakeRect(0, 0, [window frame].size.width, [window titlebarHeight]);
+  [(ChildView*)view drawRect:titlebarRect inContext:aContext];
+}
+// end
+
 static void
 DrawNativeTitlebar(CGContextRef aContext, CGRect aTitlebarRect,
                    CGFloat aUnifiedToolbarHeight, BOOL aIsMain)
 {
+NS_NOTREACHED("never call DrawNativeTitlebar");
+#if(0)
   nsNativeThemeCocoa::DrawNativeTitlebar(aContext, aTitlebarRect, aUnifiedToolbarHeight, aIsMain, NO);
 
   if (nsCocoaFeatures::OnLionOrLater()) {
@@ -3667,12 +3917,14 @@ DrawNativeTitlebar(CGContextRef aContext, CGRect aTitlebarRect,
     CGContextFillRect(aContext, CGRectMake(0, CGRectGetMaxY(aTitlebarRect) - 1,
                                            aTitlebarRect.size.width, 1));
   }
+#endif
 }
 
 // Pattern draw callback for standard titlebar gradients and solid titlebar colors
 static void
 TitlebarDrawCallback(void* aInfo, CGContextRef aContext)
 {
+#if(0)
   ToolbarWindow *window = (ToolbarWindow*)aInfo;
   if (![window drawsContentsIntoWindowFrame]) {
     NSRect titlebarRect = [window titlebarRect];
@@ -3691,13 +3943,22 @@ TitlebarDrawCallback(void* aInfo, CGContextRef aContext)
       [NSGraphicsContext restoreGraphicsState];
     }
   }
+#endif
 }
 
 - (void)setFill
 {
+#if(0)
   float patternWidth = [mWindow frame].size.width;
 
   CGPatternCallbacks callbacks = {0, &TitlebarDrawCallback, NULL};
+#else
+  CGPatternDrawPatternCallback cb = [mWindow drawsContentsIntoWindowFrame] ?
+                                      &ContentPatternDrawCallback : &RepeatedPatternDrawCallback;
+  float patternWidth = [mWindow drawsContentsIntoWindowFrame] ? [mWindow frame].size.width : sPatternWidth;
+
+  CGPatternCallbacks callbacks = {0, cb, NULL};
+#endif
   CGPatternRef pattern = CGPatternCreate(mWindow, CGRectMake(0.0f, 0.0f, patternWidth, [mWindow frame].size.height), 
                                          CGAffineTransformIdentity, patternWidth, [mWindow frame].size.height,
                                          kCGPatternTilingConstantSpacing, true, &callbacks);
@@ -3726,6 +3987,137 @@ TitlebarDrawCallback(void* aInfo, CGContextRef aContext)
 @end
 
 @implementation PopupWindow
+
+// Restored by backout of bug 675208 (10.4Fx).
+// The OS treats our custom popup windows very strangely -- many mouse events
+// sent to them never reach their target NSView objects.  (That these windows
+// are borderless and of level NSPopUpMenuWindowLevel may have something to do
+// with it.)  The best solution is to pre-empt the OS, as follows.  (All
+// events for a given NSWindow object go through its sendEvent: method.)
+- (void)sendEvent:(NSEvent *)anEvent
+{
+  NS_OBJC_BEGIN_TRY_ABORT_BLOCK;
+
+  NSView *target = nil;
+  NSView *contentView = nil;
+  NSEventType type = [anEvent type];
+  NSPoint windowLocation = NSZeroPoint;
+  switch (type) {
+    case NSScrollWheel:
+    case NSLeftMouseDown:
+    case NSLeftMouseUp:
+    case NSRightMouseDown:
+    case NSRightMouseUp:
+    case NSOtherMouseDown:
+    case NSOtherMouseUp:
+    case NSMouseMoved:
+    case NSLeftMouseDragged:
+    case NSRightMouseDragged:
+    case NSOtherMouseDragged:
+      if ((contentView = [self contentView])) {
+        // Since [anEvent window] might not be us, we can't use [anEvent locationInWindow].
+        windowLocation = nsCocoaUtils::EventLocationForWindow(anEvent, self);
+        target = [contentView hitTest:[contentView convertPoint:windowLocation fromView:nil]];
+        // If the hit test failed, the event is targeted here but is not over the window.
+        // Send it to our content view.
+        if (!target)
+          target = contentView;
+      }
+      break;
+    default:
+      break;
+  }
+  if (target) {
+#ifdef DEBUG
+    fprintf(stderr, "trying to deliver this event too\n");
+#endif
+
+	// TenFourFox issue 248
+	// We should never get mousedowns over the menu bar delivered here.
+	// If we do, we've gone wrong (read on).
+	if (type == NSLeftMouseDown || type == NSRightMouseDown) {
+		NSPoint y = nsCocoaUtils::ScreenLocationForEvent(anEvent);
+		float l = nsCocoaUtils::FlippedScreenY(y.y);
+		if (l < 23.0f) {
+#if DEBUG
+			fprintf(stderr, "Menu event was dropped by OS!\n");
+#endif
+#ifdef __ppc__
+			// Time for some deep magic. Apparently some OS bug
+			// that was never fixed in OS X/ppc can cause the
+			// OS to misdeliver mousedowns on the menubar and
+			// they wind up here; we know the event is misplaced
+			// because the click is not in the content area. 
+			// Other events like mouseup are delivered correctly.
+			// The simplest solution is simply to plug the
+			// errant mousedown back into the operating system
+			// using the named, undocumented internal entry point
+			// _NSHandleCarbonMenuEvent, which is in both 10.4
+			// and 10.5. See issue 248 for analysis.
+
+			// Use a secret method to get the underlying EventRef.
+			// This works on 10.4 and 10.5 also.
+			EventRef sekrit = [anEvent _eventRef];
+#if DEBUG
+			// Disassembly of ConvertEventRefToEventRecord shows
+			// the kind is EventRef+16, at least on PowerPC.
+			uint32_t *skind = (uint32_t *)((uint32_t)sekrit + 16);
+			uint32_t rkind = *skind;
+			fprintf(stderr, "Kind is %i\n", rkind);
+#endif
+			// Repost the event. The menubar has no sendEvent:,
+			// so we have to do this through Carbon.
+			(void)_NSHandleCarbonMenuEvent(sekrit);
+#endif
+			return;
+		}
+
+	// Fall through for other mousedowns or mousedowns in the
+	// content area proper.
+	}
+
+    switch (type) {
+      case NSScrollWheel:
+        [target scrollWheel:anEvent];
+        break;
+      case NSLeftMouseUp:
+        [target mouseUp:anEvent];
+        break;
+      case NSRightMouseDown:
+        [target rightMouseDown:anEvent];
+        break;
+      case NSRightMouseUp:
+        [target rightMouseUp:anEvent];
+        break;
+      case NSOtherMouseDown:
+        [target otherMouseDown:anEvent];
+        break;
+      case NSOtherMouseUp:
+        [target otherMouseUp:anEvent];
+        break;
+      case NSMouseMoved:
+        [target mouseMoved:anEvent];
+        break;
+      case NSLeftMouseDragged:
+        [target mouseDragged:anEvent];
+        break;
+      case NSRightMouseDragged:
+        [target rightMouseDragged:anEvent];
+        break;
+      case NSOtherMouseDragged:
+        [target otherMouseDragged:anEvent];
+        break;
+      default:
+        [super sendEvent:anEvent];
+        break;
+    }
+  } else {
+    [super sendEvent:anEvent];
+  }
+
+  NS_OBJC_END_TRY_ABORT_BLOCK;
+}
+
 
 - (id)initWithContentRect:(NSRect)contentRect styleMask:(NSUInteger)styleMask
       backing:(NSBackingStoreType)bufferingType defer:(BOOL)deferCreation
@@ -3806,6 +4198,9 @@ TitlebarDrawCallback(void* aInfo, CGContextRef aContext)
       break;
   }
 
+#ifdef DEBUG
+fprintf(stderr, "sendEvent 1953\n");
+#endif
   [super sendEvent:anEvent];
 }
 

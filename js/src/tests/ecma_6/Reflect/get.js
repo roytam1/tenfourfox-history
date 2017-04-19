@@ -21,8 +21,8 @@ assertEq(Reflect.get(new Uint8Array([0, 1, 2, 3, 4, 5, 6, 7]), 7), 7);
 // Treatment of NaN
 var f = new Float64Array([NaN]);
 var u = new Uint32Array(f.buffer);
-u[0]++;
-u[1]++;
+u[0] += 0x01000000; // little endian emulation // u[0]++;
+u[1] += 0x01000000; // little endian emulation // u[1]++;
 assertEq(f[0], NaN);
 assertEq(Reflect.get(f, 0), NaN);
 

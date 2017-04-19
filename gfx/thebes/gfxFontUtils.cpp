@@ -388,7 +388,11 @@ gfxFontUtils::ReadCMAPTableFormat14(const uint8_t *aBuf, uint32_t aLength,
     #define acceptableUCS4Encoding(p, e, k) \
         (((p) == PLATFORM_ID_MICROSOFT && (e) == EncodingIDUCS4ForMicrosoftPlatform) && (k) != 12 || \
          ((p) == PLATFORM_ID_UNICODE   && \
+          ((e) != EncodingIDUVSForUnicodePlatform)))
+/*
+removed by bug 1239603
           ((e) == EncodingIDDefaultForUnicodePlatform || (e) >= EncodingIDUCS4ForUnicodePlatform)))
+*/
 #else
     #define acceptableFormat4(p,e,k) ((p) == PLATFORM_ID_MICROSOFT && (e) == EncodingIDMicrosoft)
 

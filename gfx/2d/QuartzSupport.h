@@ -24,6 +24,8 @@ struct _CGLContextObject;
 
 enum AllowOfflineRendererEnum { ALLOW_OFFLINE_RENDERER, DISALLOW_OFFLINE_RENDERER };
 
+// 10.4 doesn't support CoreAnimation.
+#if(0)
 class nsCARenderer : public mozilla::RefCounted<nsCARenderer> {
 public:
   MOZ_DECLARE_REFCOUNTED_TYPENAME(nsCARenderer)
@@ -93,6 +95,7 @@ private:
   double                    mContentsScaleFactor;
 };
 
+#endif // 10.4
 #endif // XP_MACOSX
 #endif // nsCoreAnimationSupport_h__
 

@@ -180,6 +180,10 @@ template <size_t Ops, size_t Temps> void
 LIRGeneratorShared::defineSinCos(LInstructionHelper<2, Ops, Temps> *lir, MDefinition *mir,
                                  LDefinition::Policy policy)
 {
+#if(1)
+    MOZ_CRASH("shouldn't ever get here");
+    // I'm not sure wtf this is doing, and 10.4 doesn't have __sincos anyway.
+#else
     MOZ_ASSERT(lir->isCall());
 
     uint32_t vreg = getVirtualRegister();
@@ -207,6 +211,7 @@ LIRGeneratorShared::defineSinCos(LInstructionHelper<2, Ops, Temps> *lir, MDefini
     add(lir);
 
     return;
+#endif
 }
 
 // In LIR, we treat booleans and integers as the same low-level type (INTEGER).

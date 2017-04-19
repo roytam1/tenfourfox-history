@@ -648,6 +648,12 @@ var gCheckingPage = {
       gUpdates.setUpdate(aus.selectUpdate(updates, updates.length));
       if (gUpdates.update) {
         LOG("gCheckingPage", "onCheckComplete - update found");
+
+	// 10.4Fx
+	// Shortcircuit all the things. We always manually update.
+	gUpdates.wiz.goTo("manualUpdate2");
+	return;
+
         if (gUpdates.update.unsupported) {
           gUpdates.wiz.goTo("unsupported");
           return;
@@ -916,6 +922,46 @@ var gUnsupportedPage = {
     gUpdates.wiz.getButton("finish").focus();
   }
 };
+
+/**
+ * TenFourFox's custom manual update pages (until such time as we implement
+ * Sparkle or some such).
+ */
+var gManualUpdate2Page = {
+  onPageShow: function() {
+    var manualURL = "http://www.tenfourfox.com/";
+    var manualUpdate2LinkLabel = document.getElementById("manualUpdate2LinkLabel");
+    manualUpdate2LinkLabel.value = manualURL;
+    manualUpdate2LinkLabel.setAttribute("url", manualURL);
+
+    gUpdates.setButtons(null,
+                        "noThanksButton",
+                        "okButton", true);
+    gUpdates.wiz.getButton("finish").focus();
+  },
+  onExtra2: function() {
+    gUpdates.never();
+    gUpdates.wiz.cancel();
+  }
+};
+var gManualUpdate3Page = {
+  onPageShow: function() {
+    var manualURL = "http://www.tenfourfox.com/";
+    var manualUpdate3LinkLabel = document.getElementById("manualUpdate3LinkLabel");
+    manualUpdate3LinkLabel.value = manualURL;
+    manualUpdate3LinkLabel.setAttribute("url", manualURL);
+
+    gUpdates.setButtons(null,
+                        "noThanksButton",
+                        "okButton", true);
+    gUpdates.wiz.getButton("finish").focus();
+  },
+  onExtra2: function() {
+    gUpdates.never();
+    gUpdates.wiz.cancel();
+  }
+};
+
 
 /**
  * The "Updates Are Available" page. Provides the user information about the

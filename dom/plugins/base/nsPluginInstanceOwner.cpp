@@ -337,12 +337,14 @@ nsPluginInstanceOwner::nsPluginInstanceOwner()
 
   mPluginFrame = nullptr;
   mWidgetCreationComplete = false;
+#if(0)
 #ifdef XP_MACOSX
   mSentInitialTopLevelWindowEvent = false;
   mLastWindowIsActive = false;
   mLastContentFocused = false;
   mLastScaleFactor = 1.0;
   mShouldBlurOnActivate = false;
+#endif
 #endif
   mContentFocused = false;
   mWidgetVisible = true;
@@ -1086,6 +1088,30 @@ void nsPluginInstanceOwner::GetParameters(nsTArray<MozPluginParameter>& paramete
   loadingContent->GetPluginParameters(parameters);
 }
 
+
+#if(1) // 10.4 no duz. We uze stubz. Zome are commented out later.
+
+NPDrawingModel nsPluginInstanceOwner::GetDrawingModel() {
+  return NPDrawingModelQuickDraw; // This actually isn't a lie, really.
+}
+void nsPluginInstanceOwner::FixUpPluginWindow(int32_t i) { }
+bool nsPluginInstanceOwner::IsRemoteDrawingCoreAnimation() { return false; }
+nsresult
+nsPluginInstanceOwner::ContentsScaleFactorChanged(double aContentsScaleFactor)
+{ return NS_ERROR_NULL_POINTER; }
+NPEventModel nsPluginInstanceOwner::GetEventModel() {
+  return NPEventModelCarbon;
+}
+
+void nsPluginInstanceOwner::HidePluginWindow() { ; }
+void nsPluginInstanceOwner::DoCocoaEventDrawRect(const gfxRect& aDrawRect,
+      CGContextRef cgContext) { ; }
+void nsPluginInstanceOwner::RenderCoreAnimation(CGContextRef aCGContext,
+      int aWidth, int aHeight) { ; }
+void nsPluginInstanceOwner::Paint(const gfxRect& aDirtyRect,
+      CGContextRef cgContext) { ; }
+
+#else
 #ifdef XP_MACOSX
 
 static void InitializeNPCocoaEvent(NPCocoaEvent* event)
@@ -1219,6 +1245,7 @@ void nsPluginInstanceOwner::SetPluginPort()
     return;
   mPluginWindow->window = pluginPort;
 }
+#endif
 #endif
 
 // static
@@ -1605,6 +1632,7 @@ nsPluginInstanceOwner::HandleEvent(nsIDOMEvent* aEvent)
   nsAutoString eventType;
   aEvent->GetType(eventType);
 
+#if(0)
 #ifdef XP_MACOSX
   if (eventType.EqualsLiteral("activate") ||
       eventType.EqualsLiteral("deactivate")) {
@@ -1619,6 +1647,7 @@ nsPluginInstanceOwner::HandleEvent(nsIDOMEvent* aEvent)
     }
     return NS_OK;
   }
+#endif
 #endif
 
   if (eventType.EqualsLiteral("focus")) {
@@ -1750,6 +1779,7 @@ static NPCocoaEvent
 TranslateToNPCocoaEvent(WidgetGUIEvent* anEvent, nsIFrame* aObjectFrame)
 {
   NPCocoaEvent cocoaEvent;
+#if(0)
   InitializeNPCocoaEvent(&cocoaEvent);
   cocoaEvent.type = CocoaEventTypeForEvent(*anEvent, aObjectFrame);
 
@@ -1848,6 +1878,7 @@ TranslateToNPCocoaEvent(WidgetGUIEvent* anEvent, nsIFrame* aObjectFrame)
     default:
       break;
   }
+#endif
   return cocoaEvent;
 }
 
@@ -1871,6 +1902,7 @@ nsEventStatus nsPluginInstanceOwner::ProcessEvent(const WidgetGUIEvent& anEvent)
     return nsEventStatus_eIgnore;
   }
 
+#if(0) // 10.4 no wantz.
 #ifdef XP_MACOSX
   NPEventModel eventModel = GetEventModel();
   if (eventModel != NPEventModelCocoa) {
@@ -1948,6 +1980,7 @@ nsEventStatus nsPluginInstanceOwner::ProcessEvent(const WidgetGUIEvent& anEvent)
   if (handled && !(leftMouseButtonDown && !mContentFocused)) {
     rv = nsEventStatus_eConsumeNoDefault;
   }
+#endif
 #endif
 
 #ifdef XP_WIN
@@ -2443,8 +2476,10 @@ nsPluginInstanceOwner::Destroy()
 {
   SetFrame(nullptr);
 
+#if(0)
 #ifdef XP_MACOSX
   RemoveFromCARefreshTimer();
+#endif
 #endif
 
   nsCOMPtr<nsIContent> content = do_QueryReferent(mContent);
@@ -2499,6 +2534,7 @@ nsPluginInstanceOwner::Destroy()
 
 // Paints are handled differently, so we just simulate an update event.
 
+#if(0)
 #ifdef XP_MACOSX
 void nsPluginInstanceOwner::Paint(const gfxRect& aDirtyRect, CGContextRef cgContext)
 {
@@ -2535,6 +2571,7 @@ void nsPluginInstanceOwner::DoCocoaEventDrawRect(const gfxRect& aDrawRect, CGCon
 
   mInstance->HandleEvent(&updateEvent, nullptr);
 }
+#endif
 #endif
 
 #ifdef XP_WIN
@@ -2905,6 +2942,8 @@ void nsPluginInstanceOwner::ReleasePluginPort(void * pluginPort)
 
 NS_IMETHODIMP nsPluginInstanceOwner::CreateWidget(void)
 {
+return NS_ERROR_FAILURE; // Don't even try.
+#if(0)
   NS_ENSURE_TRUE(mPluginWindow, NS_ERROR_NULL_POINTER);
 
   nsresult rv = NS_ERROR_FAILURE;
@@ -3024,6 +3063,7 @@ NS_IMETHODIMP nsPluginInstanceOwner::CreateWidget(void)
   mWidgetCreationComplete = true;
 
   return NS_OK;
+#endif
 }
 
 #if defined(XP_WIN)
@@ -3042,6 +3082,7 @@ nsPluginInstanceOwner::ResetWidgetCursorCaching()
 }
 #endif
 
+#if(0)
 // Mac specific code to fix up the port location and clipping region
 #ifdef XP_MACOSX
 
@@ -3231,6 +3272,13 @@ nsPluginInstanceOwner::UpdateWindowVisibility(bool aVisible)
   UpdateWindowPositionAndClipRect(true);
 }
 #endif // XP_MACOSX
+#else
+// Stubs
+void
+nsPluginInstanceOwner::ResolutionMayHaveChanged() {}
+void
+nsPluginInstanceOwner::WindowFocusMayHaveChanged() {}
+#endif
 
 void
 nsPluginInstanceOwner::UpdateDocumentActiveState(bool aIsActive)

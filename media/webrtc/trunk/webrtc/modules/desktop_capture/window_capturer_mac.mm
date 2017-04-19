@@ -25,12 +25,16 @@
 #include "webrtc/system_wrappers/interface/scoped_refptr.h"
 #include "webrtc/system_wrappers/interface/tick_util.h"
 
+typedef uint32_t CGWindowID;
+
 namespace webrtc {
 
 namespace {
 
 // Returns true if the window exists.
 bool IsWindowValid(CGWindowID id) {
+return false;
+#if(0)
   CFArrayRef window_id_array =
       CFArrayCreate(NULL, reinterpret_cast<const void **>(&id), 1, NULL);
   CFArrayRef window_array =
@@ -40,6 +44,7 @@ bool IsWindowValid(CGWindowID id) {
   CFRelease(window_array);
 
   return valid;
+#endif
 }
 
 class WindowCapturerMac : public WindowCapturer {
@@ -82,6 +87,7 @@ WindowCapturerMac::~WindowCapturerMac() {
 }
 
 bool WindowCapturerMac::GetWindowList(WindowList* windows) {
+#if(0)
   // Only get on screen, non-desktop windows.
   CFArrayRef window_array = CGWindowListCopyWindowInfo(
       kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
@@ -122,6 +128,9 @@ bool WindowCapturerMac::GetWindowList(WindowList* windows) {
 
   CFRelease(window_array);
   return true;
+#else
+  return false;
+#endif
 }
 
 bool WindowCapturerMac::SelectWindow(WindowId id) {
@@ -132,6 +141,7 @@ bool WindowCapturerMac::SelectWindow(WindowId id) {
 }
 
 bool WindowCapturerMac::BringSelectedWindowToFront() {
+#if(0)
   if (!window_id_)
     return false;
 
@@ -166,6 +176,9 @@ bool WindowCapturerMac::BringSelectedWindowToFront() {
   CFRelease(window_id_array);
   CFRelease(window_array);
   return result;
+#else
+  return false;
+#endif
 }
 
 void WindowCapturerMac::Start(Callback* callback) {
@@ -176,6 +189,7 @@ void WindowCapturerMac::Start(Callback* callback) {
 }
 
 void WindowCapturerMac::Capture(const DesktopRegion& region) {
+#if(0)
   if (!IsWindowValid(window_id_)) {
     callback_->OnCaptureCompleted(NULL);
     return;
@@ -231,6 +245,7 @@ void WindowCapturerMac::Capture(const DesktopRegion& region) {
 
   if (full_screen_chrome_window_detector_)
     full_screen_chrome_window_detector_->UpdateWindowListIfNeeded(window_id_);
+#endif
 }
 
 }  // namespace

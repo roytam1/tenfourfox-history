@@ -2601,6 +2601,10 @@ MachineState::FromBailout(RegisterDump::GPRArray& regs, RegisterDump::FPUArray& 
         machine.setRegisterLocation(FloatRegister(i, FloatRegisters::Double), &fpregs[i]);
         machine.setRegisterLocation(FloatRegister(i, FloatRegisters::Single), &fpregs[i]);
     }
+#elif defined(JS_CODEGEN_PPC_OSX)
+    // Unified FPRs, all single and double, no SIMD.
+    for (unsigned i = 0; i < FloatRegisters::TotalPhys; i++)
+        machine.setRegisterLocation(FloatRegister(i), &fpregs[i]);
 #elif defined(JS_CODEGEN_X86) || defined(JS_CODEGEN_X64)
     for (unsigned i = 0; i < FloatRegisters::TotalPhys; i++) {
         machine.setRegisterLocation(FloatRegister(i, FloatRegisters::Single), &fpregs[i]);

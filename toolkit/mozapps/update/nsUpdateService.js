@@ -1497,9 +1497,11 @@ function Update(update) {
     this._patches.push(patch);
   }
 
+/*
   if (this._patches.length == 0 && !update.hasAttribute("unsupported")) {
     throw Cr.NS_ERROR_ILLEGAL_VALUE;
   }
+*/
 
   // Fallback to the behavior prior to bug 530872 if the update does not have an
   // appVersion attribute.
@@ -2391,7 +2393,8 @@ UpdateService.prototype = {
       // the same version of the application with the same build ID.
       if (vc.compare(aUpdate.appVersion, Services.appinfo.version) < 0 ||
           vc.compare(aUpdate.appVersion, Services.appinfo.version) == 0 &&
-          aUpdate.buildID == Services.appinfo.appBuildID) {
+/* TenFourFox has multiple buildIDs because of multiple subarches. */
+          aUpdate.buildID <= Services.appinfo.appBuildID) {
         LOG("UpdateService:selectUpdate - skipping update because the " +
             "update's application version is less than the current " +
             "application version");
@@ -3318,8 +3321,14 @@ Checker.prototype = {
     // Otherwise, construct the update URL from component parts.
     if (!url) {
       try {
+/*
         url = Services.prefs.getDefaultBranch(null).
               getCharPref(PREF_APP_UPDATE_URL);
+*/
+// We do not want to corrupt Firefox 3.6's prefs, so this is hard-coded.
+       url = "http://www.floodgap.com/software/tenfourfox/updatefpr.xml?ver="
+        + Services.appinfo.version+"_"+Services.appinfo.buildInfoTenFourFox;
+
       } catch (e) {
       }
     }
@@ -3467,6 +3476,8 @@ Checker.prototype = {
       // Analyze the resulting DOM and determine the set of updates.
       var updates = this._updates;
       LOG("Checker:onLoad - number of updates available: " + updates.length);
+
+      if (this.getUpdateURL(this._forced).substr(0,7) != "http://") {
       var allowNonBuiltIn = !getPref("getBoolPref",
                                      PREF_APP_UPDATE_CERT_REQUIREBUILTIN, true);
       gCertUtils.checkCert(this._request.channel, allowNonBuiltIn, certs);
@@ -3476,6 +3487,9 @@ Checker.prototype = {
 
       if (Services.prefs.prefHasUserValue(PREF_APP_UPDATE_BACKGROUNDERRORS))
         Services.prefs.clearUserPref(PREF_APP_UPDATE_BACKGROUNDERRORS);
+      } else {
+      LOG("Checker:onLoad - warning, skipping cert check when http");
+      }
 
       // Tell the callback about the updates
       this._callback.onCheckComplete(event.target, updates, updates.length);

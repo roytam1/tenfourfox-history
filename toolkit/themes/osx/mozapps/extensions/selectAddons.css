@@ -155,9 +155,15 @@
 }
 
 button {
-  -moz-appearance: toolbarbutton;
   min-height: 22px;
   margin: 0 6px;
   padding: 0;
   text-shadow: @loweredShadow@;
+  -moz-appearance: none;
+  padding: 0 2px;
+  border: 1px solid @toolbarbuttonBorderColor@;
+  border-radius: @toolbarbuttonCornerRadius@;
+  box-shadow: @loweredShadow@;
+  background: @toolbarbuttonBackground@;
+  background-origin: border-box;
 }

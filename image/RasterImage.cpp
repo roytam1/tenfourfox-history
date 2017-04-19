@@ -1399,6 +1399,7 @@ HaveSkia()
 bool
 RasterImage::CanDownscaleDuringDecode(const IntSize& aSize, uint32_t aFlags)
 {
+return false; // never supported currently
   // Check basic requirements: downscale-during-decode is enabled, Skia is
   // available, this image isn't transient, we have all the source data and know
   // our size, and the flags allow us to do it.

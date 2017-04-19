@@ -95,6 +95,10 @@ treecol {
   list-style-image: url("chrome://browser/skin/preferences/in-content/icons.svg#advanced");
 }
 
+#category-tenfourfox > .category-icon {
+  list-style-image: url("chrome://browser/skin/preferences/in-content/icons.svg#tenfourfox");
+}
+
 @media (max-width: 800px) {
   .category-name {
     display: none;

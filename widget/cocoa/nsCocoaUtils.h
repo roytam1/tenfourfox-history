@@ -8,6 +8,8 @@
 
 #import <Cocoa/Cocoa.h>
 
+typedef float CGFloat;
+
 #include "nsRect.h"
 #include "imgIContainer.h"
 #include "npapi.h"
@@ -35,7 +37,7 @@ enum {
   NSEventPhaseEnded       = 0x1 << 3,
   NSEventPhaseCancelled   = 0x1 << 4,
 };
-typedef NSUInteger NSEventPhase;
+typedef uint32_t NSEventPhase;
 #endif // #if !defined(MAC_OS_X_VERSION_10_7) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_7
 
 #if !defined(MAC_OS_X_VERSION_10_8) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_8
@@ -45,6 +47,40 @@ enum {
 #endif // #if !defined(MAC_OS_X_VERSION_10_8) || MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_8
 
 class nsIWidget;
+
+#if defined(MAC_OS_X_VERSION_10_5) && (MAC_OS_X_VERSION_MIN_REQUIRED >= MAC_OS_X_VERSION_10_5)
+#define NS_LEOPARD_AND_LATER 1
+#error The 10.4 SDK is the only supported target!
+#endif 
+
+// "Borrowed" in part from the QTKit framework's QTKitDefines.h.  This is
+// needed when building on OS X Tiger (10.4.X) or with a 10.4 SDK.  It won't
+// be used when building on Leopard (10.5.X) or higher (or with a 10.5 or
+// higher SDK).
+//
+// These definitions for NSInteger and NSUInteger are the 32-bit ones -- since
+// we assume we'll always be building 32-bit binaries when building on Tiger
+// (or with a 10.4 SDK).
+#ifndef NSINTEGER_DEFINED
+
+typedef int NSInteger;
+typedef unsigned int NSUInteger;
+
+#define NSIntegerMax    LONG_MAX
+#define NSIntegerMin    LONG_MIN
+#define NSUIntegerMax   ULONG_MAX
+
+#define NSINTEGER_DEFINED 1
+
+#endif  /* NSINTEGER_DEFINED */
+
+#ifndef CGFLOAT_DEFINED
+typedef float CGFloat;
+# define CGFLOAT_MIN FLT_MIN
+# define CGFLOAT_MAX FLT_MAX
+# define CGFLOAT_IS_DOUBLE 0
+# define CGFLOAT_DEFINED 1
+#endif
 
 namespace mozilla {
 namespace gfx {
@@ -134,6 +170,7 @@ class nsCocoaUtils
 
 public:
 
+#if(0)
   // Get the backing scale factor from an object that supports this selector
   // (NSView/Window/Screen, on 10.7 or later), returning 1.0 if not supported
   static CGFloat
@@ -204,6 +241,63 @@ public:
                       (CGFloat)aRect.width / aBackingScale,
                       (CGFloat)aRect.height / aBackingScale);
   }
+#else
+  // Conversions between Cocoa points and device pixels.
+  static int32_t
+  CocoaPointsToDevPixels(CGFloat aPts)
+  {
+    return NSToIntRound(aPts);
+  }
+
+  static LayoutDeviceIntPoint
+  CocoaPointsToDevPixels(const NSPoint& aPt)
+  {
+    return LayoutDeviceIntPoint(NSToIntRound(aPt.x),
+                                NSToIntRound(aPt.y));
+  }
+
+  static LayoutDeviceIntRect
+  CocoaPointsToDevPixels(const NSRect& aRect)
+  {
+    return LayoutDeviceIntRect(NSToIntRound(aRect.origin.x),
+                               NSToIntRound(aRect.origin.y),
+                               NSToIntRound(aRect.size.width),
+                               NSToIntRound(aRect.size.height));
+  }
+
+  static CGFloat
+  DevPixelsToCocoaPoints(int32_t aPixels)
+  {
+    return (CGFloat)aPixels;
+  }
+
+  static NSPoint
+  DevPixelsToCocoaPoints(const mozilla::LayoutDeviceIntPoint& aPt)
+  {
+    return NSMakePoint((CGFloat)aPt.x,
+                       (CGFloat)aPt.y);
+  }
+
+  // XXX: all calls to this function should eventually be replaced with calls
+  // to DevPixelsToCocoaPoints().
+  static NSRect
+  UntypedDevPixelsToCocoaPoints(const nsIntRect& aRect)
+  {
+    return NSMakeRect((CGFloat)aRect.x,
+                      (CGFloat)aRect.y,
+                      (CGFloat)aRect.width,
+                      (CGFloat)aRect.height);
+  }
+
+  static NSRect
+  DevPixelsToCocoaPoints(const LayoutDeviceIntRect& aRect)
+  {
+    return NSMakeRect((CGFloat)aRect.x,
+                      (CGFloat)aRect.y,
+                      (CGFloat)aRect.width,
+                      (CGFloat)aRect.height);
+  }
+#endif
 
   // Returns the given y coordinate, which must be in screen coordinates,
   // flipped from Gecko to Cocoa or Cocoa to Gecko.
@@ -225,14 +319,13 @@ public:
   static NSRect GeckoRectToCocoaRect(const nsIntRect &geckoRect);
 
   // Converts aGeckoRect in dev pixels to points in Cocoa coordinates
-  static NSRect GeckoRectToCocoaRectDevPix(const nsIntRect &aGeckoRect,
-                                           CGFloat aBackingScale);
+  static NSRect GeckoRectToCocoaRectDevPix(const nsIntRect &aGeckoRect);
 
   // See explanation for geckoRectToCocoaRect, guess what this does...
   static nsIntRect CocoaRectToGeckoRect(const NSRect &cocoaRect);
 
   static mozilla::LayoutDeviceIntRect CocoaRectToGeckoRectDevPix(
-    const NSRect& aCocoaRect, CGFloat aBackingScale);
+    const NSRect& aCocoaRect);
 
   // Gives the location for the event in screen coordinates. Do not call this
   // unless the window the event was originally targeted at is still alive!
@@ -261,12 +354,18 @@ public:
   static BOOL EventHasPhaseInformation(NSEvent* aEvent);
 
   // Hides the Menu bar and the Dock. Multiple hide/show requests can be nested.
-  static void HideOSChromeOnScreen(bool aShouldHide);
+  static void HideOSChromeOnScreen(bool aShouldHide, NSScreen* aScreen);
 
   static nsIWidget* GetHiddenWindowWidget();
 
   static void PrepareForNativeAppModalDialog();
   static void CleanUpAfterNativeAppModalDialog();
+
+  // Wrap calls to [theEvent keyCode] and [theEvent modifierFlags].  Needed to
+  // work around an Apple bug (on OS X 10.4.X) that causes ctrl-ESC key events
+  // sent via performKeyEquivalent: to return 0 on these calls.
+  static unsigned short GetCocoaEventKeyCode(NSEvent *theEvent);
+  static NSUInteger GetCocoaEventModifierFlags(NSEvent *theEvent);
 
   // 3 utility functions to go from a frame of imgIContainer to CGImage and then to NSImage
   // Convert imgIContainer -> CGImageRef, caller owns result
@@ -295,10 +394,9 @@ public:
       @param aImage the image to extract a frame from
       @param aWhichFrame the frame to extract (see imgIContainer FRAME_*)
       @param aResult the resulting NSImage
-      @param scaleFactor the desired scale factor of the NSImage (2 for a retina display)
       @return NS_OK if the conversion worked, NS_ERROR_FAILURE otherwise
    */  
-  static nsresult CreateNSImageFromImageContainer(imgIContainer *aImage, uint32_t aWhichFrame, NSImage **aResult, CGFloat scaleFactor);
+  static nsresult CreateNSImageFromImageContainer(imgIContainer *aImage, uint32_t aWhichFrame, NSImage **aResult);
 
   /**
    * Returns nsAString for aSrc.

@@ -1,3 +1,7 @@
+[ The below is from the Mozilla esr45 tree TenFourFox is originally
+  based on. You should consider it primarily of historical interest.
+  See README.md for TenFourFox-specific information. ]
+
 An explanation of the Mozilla Source Code Directory Structure and links to
 project pages with documentation can be found at:
 

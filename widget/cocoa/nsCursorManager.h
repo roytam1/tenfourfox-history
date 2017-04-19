@@ -37,9 +37,8 @@
  @param aCursorImage the cursor image to use
  @param aHotSpotX the x coordinate of the cursor's hotspot
  @param aHotSpotY the y coordinate of the cursor's hotspot
- @param scaleFactor the scale factor of the target display (2 for a retina display)
  */
-- (nsresult) setCursorWithImage: (imgIContainer*) aCursorImage hotSpotX: (uint32_t) aHotspotX hotSpotY: (uint32_t) aHotspotY scaleFactor: (CGFloat) scaleFactor;
+- (nsresult) setCursorWithImage: (imgIContainer*) aCursorImage hotSpotX: (uint32_t) aHotspotX hotSpotY: (uint32_t) aHotspotY ;
 
 
 /*! @method     sharedInstance

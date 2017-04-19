@@ -19,7 +19,7 @@
 }
 
 #bottomBox {
-  padding: 15px 10px 0;
+  padding: 15px 10px 15px 10px;
 }
 
 #version {
@@ -52,6 +52,13 @@
 
 #updateButton,
 #updateDeck > hbox > label {
+  -moz-margin-start: 0;
+  -moz-padding-start: 0;
+}
+
+#copyrightBox {
+  font-size: 0.9em;
+  margin-bottom: 10px;
   -moz-margin-start: 0;
   -moz-padding-start: 0;
 }

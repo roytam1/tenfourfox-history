@@ -42,6 +42,10 @@
 /* Android */
 #include "vp8_rtcd_armv7-android-gcc.h"
 
+#elif defined(TENFOURFOX_VMX)
+/* TenFourFox VMX */
+#include "vp8_rtcd_tenfourfox_altivec.h"
+
 #else
 /* Assume generic GNU/GCC configuration. */
 #include "vp8_rtcd_generic-gnu.h"

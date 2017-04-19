@@ -453,6 +453,9 @@ mozilla_sampler_log(const char *fmt, va_list args)
 
 void mozilla_sampler_init(void* stackTop)
 {
+   // 10.4Fx does not support the Sampler; it doesn't grok PPC or 10.4.
+   return;
+
   sInitCount++;
 
   if (stack_key_initialized)
@@ -530,6 +533,9 @@ void mozilla_sampler_init(void* stackTop)
 
 void mozilla_sampler_shutdown()
 {
+  // 10.4Fx does not support the Sampler; it doesn't grok PPC or 10.4.
+  return;
+
   sInitCount--;
 
   if (sInitCount > 0)
@@ -581,6 +587,7 @@ void mozilla_sampler_save()
 
 mozilla::UniquePtr<char[]> mozilla_sampler_get_profile(double aSinceTime)
 {
+return nullptr; // 10.4Fx
   GeckoSampler *t = tlsTicker.get();
   if (!t) {
     return nullptr;
@@ -592,6 +599,7 @@ mozilla::UniquePtr<char[]> mozilla_sampler_get_profile(double aSinceTime)
 #ifndef SPS_STANDALONE
 JSObject *mozilla_sampler_get_profile_data(JSContext *aCx, double aSinceTime)
 {
+return nullptr; // 10.4Fx
   GeckoSampler *t = tlsTicker.get();
   if (!t) {
     return nullptr;
@@ -685,6 +693,7 @@ void mozilla_sampler_save_profile_to_file(const char* aFilename)
 
 const char** mozilla_sampler_get_features()
 {
+return nullptr; // 10.4Fx
   static const char* features[] = {
 #if defined(MOZ_PROFILING) && defined(HAVE_NATIVE_UNWIND)
     // Walk the C++ stack.
@@ -756,6 +765,7 @@ void mozilla_sampler_start(int aProfileEntries, double aInterval,
                            const char** aThreadNameFilters, uint32_t aFilterCount)
 
 {
+return; // 10.4Fx
   LOG("BEGIN mozilla_sampler_start");
 
   if (!stack_key_initialized)
@@ -863,6 +873,7 @@ void mozilla_sampler_start(int aProfileEntries, double aInterval,
 
 void mozilla_sampler_stop()
 {
+return; // 10.4Fx
   LOG("BEGIN mozilla_sampler_stop");
 
   if (!stack_key_initialized)
@@ -970,6 +981,8 @@ bool mozilla_sampler_feature_active(const char* aName)
 
 bool mozilla_sampler_is_active()
 {
+// We never run the sampler.
+return false;
   return sIsProfiling;
 }
 
@@ -985,6 +998,7 @@ void mozilla_sampler_frame_number(int frameNumber)
 
 void mozilla_sampler_lock()
 {
+return;
   profiler_stop();
 #ifndef SPS_STANDALONE
   nsCOMPtr<nsIObserverService> os = mozilla::services::GetObserverService();
@@ -995,6 +1009,7 @@ void mozilla_sampler_lock()
 
 void mozilla_sampler_unlock()
 {
+return;
 #ifndef SPS_STANDALONE
   nsCOMPtr<nsIObserverService> os = mozilla::services::GetObserverService();
   if (os)
@@ -1004,6 +1019,7 @@ void mozilla_sampler_unlock()
 
 bool mozilla_sampler_register_thread(const char* aName, void* aGuessStackTop)
 {
+return false;
   if (sInitCount == 0) {
     return false;
   }
@@ -1027,6 +1043,7 @@ bool mozilla_sampler_register_thread(const char* aName, void* aGuessStackTop)
 
 void mozilla_sampler_unregister_thread()
 {
+return; // 10.4Fx
   // Don't check sInitCount count here -- we may be unregistering the
   // thread after the sampler was shut down.
   if (!stack_key_initialized) {

@@ -16,23 +16,26 @@ NS_IMPL_ISUPPORTS(nsCollationMacUC, nsICollation)
 nsCollationMacUC::nsCollationMacUC() 
   : mInit(false)
   , mHasCollator(false)
-  , mLocaleICU(nullptr)
+//  , mLocaleICU(nullptr)
   , mLocale(nullptr)
   , mLastStrength(-1)
-  , mCollatorICU(nullptr)
+//  , mCollatorICU(nullptr)
   , mCollator(nullptr)
   , mBuffer(nullptr)
   , mBufferLen(1)
-  , mUseICU(true)
+//  , mUseICU(true)
 {
+#if(0)
   nsCOMPtr<nsIPrefBranch> prefs = do_GetService(NS_PREFSERVICE_CONTRACTID);
   if (prefs) {
     prefs->GetBoolPref("intl.collation.mac.use_icu", &mUseICU);
   }
+#endif
 }
 
 nsCollationMacUC::~nsCollationMacUC() 
 {
+#if(0)
 #ifdef DEBUG
   nsresult res =
 #endif
@@ -49,8 +52,24 @@ nsCollationMacUC::~nsCollationMacUC()
       mBuffer = nullptr;
     }
   }
+#else
+  // Previous Carbon version
+  if (mHasCollator) {
+#ifdef DEBUG
+    OSStatus err =
+#endif
+      ::UCDisposeCollator(&mCollator);
+    mHasCollator = false;
+    NS_ASSERTION((err == noErr), "UCDisposeCollator failed");
+  }
+  if(mBuffer) {
+  	free(mBuffer);
+  	mBuffer = nullptr;
+  }
+#endif
 }
 
+#if(0)
 nsresult nsCollationMacUC::ConvertStrength(const int32_t aNSStrength,
                                            UCollationStrength* aICUStrength,
                                            UColAttributeValue* aCaseLevelOut)
@@ -84,6 +103,7 @@ nsresult nsCollationMacUC::ConvertStrength(const int32_t aNSStrength,
 
   return NS_OK;
 }
+#endif
 
 nsresult nsCollationMacUC::StrengthToOptions(const int32_t aStrength,
                                              UCCollateOptions* aOptions)
@@ -100,6 +120,7 @@ nsresult nsCollationMacUC::StrengthToOptions(const int32_t aStrength,
   return NS_OK;
 }
 
+#if(0)
 nsresult nsCollationMacUC::ConvertLocaleICU(nsILocale* aNSLocale, char** aICULocale)
 {
   NS_ENSURE_ARG_POINTER(aNSLocale);
@@ -121,6 +142,7 @@ nsresult nsCollationMacUC::ConvertLocaleICU(nsILocale* aNSLocale, char** aICULoc
 
   return NS_OK;
 }
+#endif
 
 nsresult nsCollationMacUC::ConvertLocale(nsILocale* aNSLocale, LocaleRef* aMacLocale) 
 {
@@ -146,66 +168,23 @@ nsresult nsCollationMacUC::EnsureCollator(const int32_t newStrength)
   if (mHasCollator && (mLastStrength == newStrength))
     return NS_OK;
 
-  nsresult res;
-  res = CleanUpCollator();
-  NS_ENSURE_SUCCESS(res, res);
-
-  if (mUseICU) {
-    NS_ENSURE_TRUE(mLocaleICU, NS_ERROR_NOT_INITIALIZED);
-
-    UErrorCode status;
-    status = U_ZERO_ERROR;
-    mCollatorICU = ucol_open(mLocaleICU, &status);
-    NS_ENSURE_TRUE(U_SUCCESS(status), NS_ERROR_FAILURE);
-
-    UCollationStrength strength;
-    UColAttributeValue caseLevel;
-    res = ConvertStrength(newStrength, &strength, &caseLevel);
-    NS_ENSURE_SUCCESS(res, res);
-
-    status = U_ZERO_ERROR;
-    ucol_setAttribute(mCollatorICU, UCOL_STRENGTH, strength, &status);
-    NS_ENSURE_TRUE(U_SUCCESS(status), NS_ERROR_FAILURE);
-    ucol_setAttribute(mCollatorICU, UCOL_CASE_LEVEL, caseLevel, &status);
-    NS_ENSURE_TRUE(U_SUCCESS(status), NS_ERROR_FAILURE);
-    ucol_setAttribute(mCollatorICU, UCOL_ALTERNATE_HANDLING, UCOL_DEFAULT, &status);
-    NS_ENSURE_TRUE(U_SUCCESS(status), NS_ERROR_FAILURE);
-    ucol_setAttribute(mCollatorICU, UCOL_NUMERIC_COLLATION, UCOL_OFF, &status);
-    NS_ENSURE_TRUE(U_SUCCESS(status), NS_ERROR_FAILURE);
-    ucol_setAttribute(mCollatorICU, UCOL_NORMALIZATION_MODE, UCOL_ON, &status);
-    NS_ENSURE_TRUE(U_SUCCESS(status), NS_ERROR_FAILURE);
-    ucol_setAttribute(mCollatorICU, UCOL_CASE_FIRST, UCOL_DEFAULT, &status);
-    NS_ENSURE_TRUE(U_SUCCESS(status), NS_ERROR_FAILURE);
-  } else {
-    OSStatus err;
-    UCCollateOptions newOptions;
-    res = StrengthToOptions(newStrength, &newOptions);
-    NS_ENSURE_SUCCESS(res, res);
-
-    LocaleOperationVariant opVariant = 0; // default variant for now
-    err = ::UCCreateCollator(mLocale, opVariant, newOptions, &mCollator);
+  OSStatus err;
+  if (mHasCollator) {
+    err = ::UCDisposeCollator(&mCollator);
+    mHasCollator = false;
     NS_ENSURE_TRUE((err == noErr), NS_ERROR_FAILURE);
   }
 
+  UCCollateOptions newOptions;
+  nsresult res = StrengthToOptions(newStrength, &newOptions);
+  NS_ENSURE_SUCCESS(res, res);
+  
+  LocaleOperationVariant opVariant = 0; // default variant for now
+  err = ::UCCreateCollator(mLocale, opVariant, newOptions, &mCollator);
+  NS_ENSURE_TRUE((err == noErr), NS_ERROR_FAILURE);
   mHasCollator = true;
 
   mLastStrength = newStrength;
-  return NS_OK;
-}
-
-nsresult nsCollationMacUC::CleanUpCollator(void)
-{
-  if (mHasCollator) {
-    if (mUseICU) {
-      ucol_close(mCollatorICU);
-      mHasCollator = false;
-    } else {
-      OSStatus err = ::UCDisposeCollator(&mCollator);
-      mHasCollator = false;
-      NS_ENSURE_TRUE((err == noErr), NS_ERROR_FAILURE);
-    }
-  }
-
   return NS_OK;
 }
 
@@ -223,11 +202,7 @@ NS_IMETHODIMP nsCollationMacUC::Initialize(nsILocale* locale)
     locale = appLocale;
   }
 
-  if (mUseICU) {
-    rv = ConvertLocaleICU(locale, &mLocaleICU);
-  } else {
-    rv = ConvertLocale(locale, &mLocale);
-  }
+  rv = ConvertLocale(locale, &mLocale);
   NS_ENSURE_SUCCESS(rv, rv);
 
   mInit = true;
@@ -246,6 +221,7 @@ NS_IMETHODIMP nsCollationMacUC::AllocateRawSortKey(int32_t strength, const nsASt
 
   uint32_t stringInLen = stringIn.Length();
 
+#if(0)
   if (mUseICU) {
     const UChar* str = (const UChar*)PromiseFlatString(stringIn).get();
 
@@ -266,6 +242,7 @@ NS_IMETHODIMP nsCollationMacUC::AllocateRawSortKey(int32_t strength, const nsASt
 
     return NS_OK;
   }
+#endif
 
   uint32_t maxKeyLen = (1 + stringInLen) * kCollationValueSizeFactor * sizeof(UCCollationValue);
   if (maxKeyLen > mBufferLen) {
@@ -316,23 +293,6 @@ NS_IMETHODIMP nsCollationMacUC::CompareString(int32_t strength, const nsAString&
 
   nsresult res = EnsureCollator(strength);
   NS_ENSURE_SUCCESS(res, res);
-
-  if (mUseICU) {
-    UCollationResult uresult;
-    uresult = ucol_strcoll(mCollatorICU,
-                           (const UChar*)PromiseFlatString(string1).get(), string1.Length(),
-                           (const UChar*)PromiseFlatString(string2).get(), string2.Length());
-    int32_t res;
-    switch (uresult) {
-      case UCOL_LESS: res = -1; break;
-      case UCOL_EQUAL: res = 0; break;
-      case UCOL_GREATER: res = 1; break;
-      default: MOZ_CRASH("ucol_strcoll returned bad UCollationResult");
-    }
-    *result = res;
-    return NS_OK;
-  }
-
   *result = 0;
 
   OSStatus err;
@@ -354,20 +314,6 @@ NS_IMETHODIMP nsCollationMacUC::CompareRawSortKey(const uint8_t* key1, uint32_t 
   NS_ENSURE_ARG_POINTER(key2);
   NS_ENSURE_ARG_POINTER(result);
   *result = 0;
-
-  if (mUseICU) {
-    int32_t tmpResult = strcmp((const char*)key1, (const char*)key2);
-    int32_t res;
-    if (tmpResult < 0) {
-      res = -1;
-    } else if (tmpResult > 0) {
-      res = 1;
-    } else {
-      res = 0;
-    }
-    *result = res;
-    return NS_OK;
-  }
 
   OSStatus err;
   err = ::UCCompareCollationKeys((const UCCollationValue*) key1, (ItemCount) len1,

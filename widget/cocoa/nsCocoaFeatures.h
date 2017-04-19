@@ -18,6 +18,8 @@ public:
   static int32_t OSXVersionMajor();
   static int32_t OSXVersionMinor();
   static int32_t OSXVersionBugFix();
+  static bool OnLeopardOrLater(); // 10.4Fx
+  static bool OnSnowLeopardOrLater(); // 10.4Fx
   static bool OnLionOrLater();
   static bool OnMountainLionOrLater();
   static bool OnMavericksOrLater();

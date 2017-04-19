@@ -71,7 +71,10 @@
 
 #main-window {
   -moz-appearance: none;
-  background-color: #eeeeee;
+  background-color: -moz-mac-chrome-active;
+}
+#main-window:-moz-window-inactive {
+  background-color: -moz-mac-chrome-inactive;
 }
 
 /** Begin titlebar **/
@@ -167,7 +170,7 @@ toolbarseparator {
 #nav-bar {
   -moz-appearance: none;
   background: url(chrome://browser/skin/Toolbar-background-noise.png),
-              linear-gradient(hsl(0,0%,93%), hsl(0,0%,83%));
+              linear-gradient(hsl(0,0%,94%), hsl(0,0%,79%));
   background-clip: border-box;
   background-origin: border-box !important;
 
@@ -209,7 +212,8 @@ toolbarseparator {
 
 /* Always draw a border on Yosemite to ensure the border is well-defined there
  * (the default border is too light). */
-@media (-moz-mac-yosemite-theme) {
+/* Also do this for Tiger. */
+/* @media (-moz-mac-yosemite-theme) { */
   #main-window[tabsintitlebar] #TabsToolbar:not([collapsed="true"]) + #nav-bar:not(:-moz-lwtheme) {
     border-top: 1px solid hsla(0,0%,0%,.2);
     background-clip: padding-box;
@@ -218,7 +222,7 @@ toolbarseparator {
     position: relative;
     z-index: 1;
   }
-}
+/*}*/
 
 #nav-bar-customization-target {
   padding: 4px;

@@ -878,10 +878,12 @@ nsresult nsGeolocationService::Init()
   mProvider = do_GetService(GONK_GPS_GEOLOCATION_PROVIDER_CONTRACTID);
 #endif
 
+#if(0) // 10.4 and 10.5 no haz.
 #ifdef MOZ_WIDGET_COCOA
   if (Preferences::GetBool("geo.provider.use_corelocation", true)) {
     mProvider = new CoreLocationLocationProvider();
   }
+#endif
 #endif
 
 #ifdef XP_WIN
@@ -891,7 +893,7 @@ nsresult nsGeolocationService::Init()
   }
 #endif
 
-  if (Preferences::GetBool("geo.provider.use_mls", false)) {
+  if (Preferences::GetBool("geo.provider.use_mls", true)) {
     mProvider = do_CreateInstance("@mozilla.org/geolocation/mls-provider;1");
   }
 

@@ -28,9 +28,10 @@ function test()
     gc();
     gc();
     gcparam("maxBytes", gcparam("gcBytes") + 4*1024);
-    expectExitCode(5);
+    expectExitCode(3);
   }
 
+try {
   const numRows = 600;
   const numCols = 600;
   var scratch = {};
@@ -127,4 +128,5 @@ function test()
   reportCompare(expect, actual, summary);
 
   exitFunc ('test');
+} catch(e) { assertEq(""+e, "out of memory"); quit(3); }
 }

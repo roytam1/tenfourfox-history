@@ -9,7 +9,7 @@
 #include "base/logging.h"
 
 LockImpl::LockImpl() {
-#ifndef NDEBUG
+#if 0 // ndef NDEBUG
   // In debug, setup attributes for lock error checking.
   pthread_mutexattr_t mta;
   int rv = pthread_mutexattr_init(&mta);

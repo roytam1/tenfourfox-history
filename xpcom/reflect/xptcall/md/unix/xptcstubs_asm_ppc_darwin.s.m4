@@ -85,14 +85,15 @@ _SharedStub:
         addi     r6, r1,  44    // 3, pointer to saved GPRs
         addi     r7, r1,  72    // 4, pointer to saved FPRs
 
-        bl      L_PrepareAndDispatch$stub
+        //bl      L_PrepareAndDispatch$stub
+        bl      _PrepareAndDispatch
                                 // Do it
         nop                     // Leave room for linker magic
 
                                 // Epilog(ue)
         lwz      r0, 184(r1)    // Retrieve old link register value
-        addi     r1, r1, 176    // Restore stack pointer
         mtlr     r0             // Restore link register
+        addi     r1, r1, 176    // Restore stack pointer
         blr                     // Return
 
 .picsymbol_stub
@@ -107,6 +108,13 @@ L1$pb:
         lwz     r12,lo16(L1$lz-L1$pb)(r11)
         mtctr   r12
         addi    r11,r11,lo16(L1$lz-L1$pb)
+#if _PPC970_
+#warning G5 version
+	// Keep the bctr out of the branch slot.
+	nop
+	nop
+	nop
+#endif
         bctr
 .lazy_symbol_pointer
 L1$lz:

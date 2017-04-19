@@ -24,6 +24,8 @@ class nsChildView;
 namespace mozilla {
 namespace widget {
 
+#ifdef NS_LEOPARD_AND_LATER
+
 // Key code constants
 enum
 {
@@ -1130,6 +1132,7 @@ protected:
                                        bool aDispatchKeyDown);
 };
 
+#endif // NS_LEOPARD_AND_LATER
 } // namespace widget
 } // namespace mozilla
 

@@ -6085,6 +6085,9 @@ MALLOC_OUT:
 
 	osx_use_jemalloc = (default_zone->version == SNOW_LEOPARD_MALLOC_ZONE_T_VERSION ||
 			    default_zone->version == LION_MALLOC_ZONE_T_VERSION);
+#ifdef __ppc__
+	osx_use_jemalloc |= (default_zone->version == LEOPARD_MALLOC_ZONE_T_VERSION);
+#endif
 
 	/* Allow us dynamically turn off jemalloc for testing. */
 	if (getenv("NO_MAC_JEMALLOC")) {
@@ -6241,7 +6244,9 @@ MEMALIGN(size_t alignment, size_t size)
 {
 	void *ret;
 
+#if(0)
 	DARWIN_ONLY(return (szone->memalign)(szone, alignment, size));
+#endif
 
 	assert(((alignment - 1) & alignment) == 0);
 

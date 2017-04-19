@@ -209,6 +209,9 @@ partial interface Navigator {
   [Throws]
   boolean javaEnabled();
 
+  [Throws]
+  readonly attribute DOMString isTenFourFox;
+
   /**
    * Navigator requests to add an idle observer to the existing window.
    */

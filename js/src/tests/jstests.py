@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/opt/local/bin/python2.7
 """
 The JS Shell Test Harness.
 
@@ -59,7 +59,7 @@ def parse_args():
                           default=max(1, get_cpu_count()),
                           help='Number of tests to run in parallel'
                           ' (default %default)')
-    harness_og.add_option('-t', '--timeout', type=float, default=150.0,
+    harness_og.add_option('-t', '--timeout', type=float, default=350.0,
                           help='Set maximum time a test is allows to run'
                           ' (in seconds).')
     harness_og.add_option('-a', '--args', dest='shell_args', default='',

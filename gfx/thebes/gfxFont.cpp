@@ -750,7 +750,7 @@ gfxFont::gfxFont(gfxFontEntry *aFontEntry, const gfxFontStyle *aFontStyle,
     mStyle(*aFontStyle),
     mAdjustedSize(0.0),
     mFUnitsConvFactor(-1.0f), // negative to indicate "not yet initialized"
-    mAntialiasOption(anAAOption)
+    mAntialiasOption(anAAOption), mSpacingKludge(false)
 {
 #ifdef DEBUG_TEXT_RUN_STORAGE_METRICS
     ++gFontCount;
@@ -783,9 +783,11 @@ gfxFont::GetGlyphHAdvance(gfxContext *aCtx, uint16_t aGID)
     if (!SetupCairoFont(aCtx)) {
         return 0;
     }
+#if(0) // always false in TenFourFox
     if (ProvidesGlyphWidths()) {
         return GetGlyphWidth(*aCtx->GetDrawTarget(), aGID) / 65536.0;
     }
+#endif
     if (mFUnitsConvFactor < 0.0f) {
         GetMetrics(eHorizontal);
     }

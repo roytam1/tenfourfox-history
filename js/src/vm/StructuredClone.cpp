@@ -204,6 +204,8 @@ class SCInput {
 
     template <class T>
     bool readArray(T* p, size_t nelems);
+    template <class T>
+    bool readArraySwapped(T* p, size_t nelems);
 
     bool reportTruncated() {
          JS_ReportErrorNumber(cx, GetErrorMessage, nullptr,
@@ -591,6 +593,27 @@ SCInput::readArray(T* p, size_t nelems)
         return reportTruncated();
 
     copyAndSwapFromLittleEndian(p, point, nelems);
+    point += nwords;
+    return true;
+}
+
+// Almost the same, but with byte swapping for little endian emulation!
+// Or, in this case, no swapping.
+template <class T>
+bool
+SCInput::readArraySwapped(T* p, size_t nelems)
+{
+
+    /*
+     * Fail if nelems is so huge as to make JS_HOWMANY overflow or if nwords is
+     * larger than the remaining data.
+     */
+    size_t nwords = JS_HOWMANY(nelems, sizeof(uint64_t) / sizeof(T));
+    if (nelems + sizeof(uint64_t) / sizeof(T) - 1 < nelems || nwords > size_t(bufEnd - point))
+        return reportTruncated();
+
+    if (nelems > 0)
+        memcpy(p, point, nelems * sizeof(T));
     point += nwords;
     return true;
 }
@@ -1619,9 +1642,10 @@ JSStructuredCloneReader::readV1ArrayBuffer(uint32_t arrayType, uint32_t nelems,
         return in.readArray((uint8_t*) buffer.dataPointer(), nelems);
       case Scalar::Int16:
       case Scalar::Uint16:
-        return in.readArray((uint16_t*) buffer.dataPointer(), nelems);
+        return in.readArraySwapped((uint16_t*) buffer.dataPointer(), nelems);
       case Scalar::Int32:
       case Scalar::Uint32:
+        return in.readArraySwapped((uint32_t*) buffer.dataPointer(), nelems);
       case Scalar::Float32:
         return in.readArray((uint32_t*) buffer.dataPointer(), nelems);
       case Scalar::Float64:

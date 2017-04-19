@@ -294,6 +294,7 @@ private:
   nsCOMPtr<nsIWidget>         mWidget;
   RefPtr<nsPluginHost>      mPluginHost;
   
+#if(0)
 #ifdef XP_MACOSX
   static nsCOMPtr<nsITimer>                *sCATimer;
   static nsTArray<nsPluginInstanceOwner*>  *sCARefreshListeners;
@@ -303,6 +304,7 @@ private:
   double                                    mLastScaleFactor;
   // True if, the next time the window is activated, we should blur ourselves.
   bool                                      mShouldBlurOnActivate;
+#endif
 #endif
 
   // Initially, the event loop nesting level we were created on, it's updated

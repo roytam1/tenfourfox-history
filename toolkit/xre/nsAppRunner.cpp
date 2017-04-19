@@ -213,6 +213,8 @@
 #include "mozilla/SandboxInfo.h"
 #endif
 
+#include "OptimizedFor.h"
+
 extern uint32_t gRestartMode;
 extern void InstallSignalHandlers(const char *ProgramName);
 
@@ -1151,6 +1153,16 @@ nsXULAppInfo::GetIsOfficial(bool* aResult)
 #else
   *aResult = false;
 #endif
+  return NS_OK;
+}
+
+NS_IMETHODIMP
+nsXULAppInfo::GetBuildInfoTenFourFox(nsACString& aResult)
+{
+  aResult.AssignLiteral(FX104_OPTIMIZED_FOR);
+  SInt32 majorVersion = nsCocoaFeatures::OSXVersionMajor();
+  SInt32 minorVersion = nsCocoaFeatures::OSXVersionMinor();
+  aResult.Append(nsPrintfCString("_%d.%d", majorVersion, minorVersion));
   return NS_OK;
 }
 
@@ -3175,15 +3187,15 @@ XREMain::XRE_mainInit(bool* aExitFlag)
 #endif
 
   // Check for application.ini overrides
-  const char* override = nullptr;
-  ar = CheckArg("override", true, &override);
+  const char* _override = nullptr;
+  ar = CheckArg("override", true, &_override);
   if (ar == ARG_BAD) {
     Output(true, "Incorrect number of arguments passed to --override");
     return 1;
   }
   else if (ar == ARG_FOUND) {
     nsCOMPtr<nsIFile> overrideLF;
-    rv = XRE_GetFileFromPath(override, getter_AddRefs(overrideLF));
+    rv = XRE_GetFileFromPath(_override, getter_AddRefs(overrideLF));
     if (NS_FAILED(rv)) {
       Output(true, "Error: unrecognized override.ini path.\n");
       return 1;
@@ -3368,7 +3380,7 @@ XREMain::XRE_mainInit(bool* aExitFlag)
   SaveToEnv("MOZ_LAUNCHED_CHILD=");
 
   gRestartArgc = gArgc;
-  gRestartArgv = (char**) malloc(sizeof(char*) * (gArgc + 1 + (override ? 2 : 0)));
+  gRestartArgv = (char**) malloc(sizeof(char*) * (gArgc + 1 + (_override ? 2 : 0)));
   if (!gRestartArgv) {
     return 1;
   }
@@ -3379,9 +3391,9 @@ XREMain::XRE_mainInit(bool* aExitFlag)
   }
   
   // Add the -override argument back (it is removed automatically be CheckArg) if there is one
-  if (override) {
+  if (_override) {
     gRestartArgv[gRestartArgc++] = const_cast<char*>("-override");
-    gRestartArgv[gRestartArgc++] = const_cast<char*>(override);
+    gRestartArgv[gRestartArgc++] = const_cast<char*>(_override);
   }
 
   gRestartArgv[gRestartArgc] = nullptr;

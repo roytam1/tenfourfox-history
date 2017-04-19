@@ -36,6 +36,8 @@
 
 /* ---- System specific configurations ----------------------------------- */
 
+/* 64 bit configuration not yet supported in TenFourFox. */
+#if(0)
 #if defined (POWERPC) && defined (__powerpc64__)	/* linux64 */
 #ifndef POWERPC64
 #define POWERPC64
@@ -52,6 +54,9 @@
 #define POWERPC64
 #endif
 #endif
+#endif /* if (0) */
+#undef POWERPC64
+#undef POWERPC_DARWIN64
 
 #ifndef LIBFFI_ASM
 typedef unsigned long          ffi_arg;

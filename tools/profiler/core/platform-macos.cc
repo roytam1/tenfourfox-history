@@ -141,7 +141,9 @@ class PlatformData {
  public:
   PlatformData() : profiled_thread_(mach_thread_self())
   {
+#if(0)
     profiled_pthread_ = pthread_from_mach_thread_np(profiled_thread_);
+#endif
   }
 
   ~PlatformData() {
@@ -361,7 +363,11 @@ Sampler::GetProfiledThread(PlatformData* aData)
 #include <sys/syscall.h>
 pid_t gettid()
 {
+#if(0)
   return (pid_t) syscall(SYS_thread_selfid);
+#else
+  return (pid_t)0;
+#endif
 }
 
 /* static */ Thread::tid_t
@@ -461,7 +467,9 @@ void TickSample::PopulateContext(void* aContext)
       "=r"(fp)
   );
 #else
+/* up yours, Mozilla
 # error "Unsupported architecture"
+*/
 #endif
   pc = reinterpret_cast<Address>(__builtin_extract_return_addr(
                                     __builtin_return_address(0)));

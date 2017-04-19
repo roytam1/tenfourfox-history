@@ -14,7 +14,7 @@
 
 #include "2D.h"
 
-#ifdef MOZ_WIDGET_COCOA
+#if(0) // def MOZ_WIDGET_COCOA
 class MacIOSurface;
 #endif
 
@@ -169,7 +169,7 @@ private:
   IntSize mSize;
 };
 
-#ifdef MOZ_WIDGET_COCOA
+#if(0) // def MOZ_WIDGET_COCOA
 class SourceSurfaceCGIOSurfaceContext : public SourceSurfaceCGContext
 {
 public:

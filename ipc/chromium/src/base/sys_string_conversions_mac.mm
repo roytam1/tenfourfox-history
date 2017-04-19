@@ -78,13 +78,16 @@ static OutStringType STLStringToSTLStringWithEncodingsT(
     return OutStringType();
 
   scoped_cftyperef<CFStringRef> cfstring(
-      CFStringCreateWithBytesNoCopy(NULL,
+	// 10.4 lacks this. Hope this doesn't leak :(
+      //CFStringCreateWithBytesNoCopy(NULL,
+      CFStringCreateWithBytes(NULL,
                                     reinterpret_cast<const UInt8*>(in.data()),
                                     in_length *
                                       sizeof(typename InStringType::value_type),
                                     in_encoding,
-                                    false,
-                                    kCFAllocatorNull));
+                                    //false,
+                                    //kCFAllocatorNull));
+				false));
   if (!cfstring)
     return OutStringType();
 

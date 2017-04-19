@@ -128,6 +128,8 @@ bool UdpSocketPosix::SetSockopt(int32_t level, int32_t optname,
 
 int32_t UdpSocketPosix::SetTOS(int32_t serviceType)
 {
+// 10.4 doesn't have this constant.
+#define IP_TOS 3
     if (SetSockopt(IPPROTO_IP, IP_TOS ,(int8_t*)&serviceType ,4) != 0)
     {
         return -1;

@@ -38,6 +38,7 @@ GfxInfo::GfxInfo()
 static OperatingSystem
 OSXVersionToOperatingSystem(uint32_t aOSXVersion)
 {
+#if(0)
   if (nsCocoaFeatures::ExtractMajorVersion(aOSXVersion) == 10) {
     switch (nsCocoaFeatures::ExtractMinorVersion(aOSXVersion)) {
       case 6:
@@ -52,7 +53,7 @@ OSXVersionToOperatingSystem(uint32_t aOSXVersion)
         return DRIVER_OS_OS_X_10_10;
     }
   }
-
+#endif
   return DRIVER_OS_UNKNOWN;
 }
 // The following three functions are derived from Chromium code
@@ -359,7 +360,15 @@ GfxInfo::FindMonitors(JSContext* aCx, JS::HandleObject aOutArray)
   // CVDisplayLinkGetNominalOutputVideoRefreshPeriod, but that's a little
   // involved. Ideally we could query it from vsync. For now, we leave it out.
   int32_t deviceCount = 0;
+#if(0)
   for (NSScreen* screen in [NSScreen screens]) {
+#else
+  NSArray *screens = [NSScreen screens];
+  size_t screencount = [screens count];
+  size_t i;
+  for(i=0; i<screencount; i++) {
+    NSScreen *screen = [screens objectAtIndex:i];
+#endif
     NSRect rect = [screen frame];
 
     JS::Rooted<JSObject*> obj(aCx, JS_NewPlainObject(aCx));
@@ -370,7 +379,7 @@ GfxInfo::FindMonitors(JSContext* aCx, JS::HandleObject aOutArray)
     JS::Rooted<JS::Value> screenHeight(aCx, JS::Int32Value((int)rect.size.height));
     JS_SetProperty(aCx, obj, "screenHeight", screenHeight);
 
-    JS::Rooted<JS::Value> scale(aCx, JS::NumberValue(nsCocoaUtils::GetBackingScaleFactor(screen)));
+    JS::Rooted<JS::Value> scale(aCx, JS::NumberValue(1.0f));
     JS_SetProperty(aCx, obj, "scale", scale);
 
     JS::Rooted<JS::Value> element(aCx, JS::ObjectValue(*obj));

@@ -156,13 +156,15 @@ if CONFIG['MOZ_WEBRTC']:
 
 if CONFIG['MOZ_WIDGET_TOOLKIT'] == 'cocoa':
     OS_LIBS += [
+        'atomic',
         '-framework OpenGL',
         '-framework SystemConfiguration',
-        '-framework QTKit',
+        '-framework QuickTime',
+        '-framework Carbon',
+	'-framework ApplicationServices',
         '-framework IOKit',
-        '-F%s' % CONFIG['MACOS_PRIVATE_FRAMEWORKS_DIR'],
-        '-framework CoreUI',
-        '-framework CoreSymbolication',
+        '-Wl,-F%s' % CONFIG['MACOS_PRIVATE_FRAMEWORKS_DIR'],
+	'-read_only_relocs suppress',
         'cups',
     ]
 

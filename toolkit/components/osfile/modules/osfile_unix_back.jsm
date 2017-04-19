@@ -311,6 +311,7 @@
                            /*uid*/    Type.uid_t,
                            /*gid*/    Type.gid_t);
 
+if(0) {
        libc.declareLazyFFI(SysFile,  "copyfile",
                            "copyfile", ctypes.default_abi,
                            /*return*/ Type.negativeone_or_nothing,
@@ -318,6 +319,10 @@
                            /*dest*/   Type.path,
                            /*state*/  Type.void_t.in_ptr, // Ignored atm
                            /*flags*/  Type.uint32_t);
+}
+	   /* Unfortunately, this will succeed, but copyfile(3) in 10.4 is bogus and
+	      doesn't actually work. So ... */
+	   SysFile.copyfile = null;
 
        libc.declareLazyFFI(SysFile,  "dup",
                            "dup", ctypes.default_abi,

@@ -24,6 +24,8 @@
 # include "jit/mips32/MacroAssembler-mips32.h"
 #elif defined(JS_CODEGEN_MIPS64)
 # include "jit/mips64/MacroAssembler-mips64.h"
+#elif defined(JS_CODEGEN_PPC_OSX)
+# include "jit/osxppc/MacroAssembler-ppc.h"
 #elif defined(JS_CODEGEN_NONE)
 # include "jit/none/MacroAssembler-none.h"
 #else
@@ -64,8 +66,8 @@
 // architectures on each method declaration, such as PER_ARCH and
 // PER_SHARED_ARCH.
 
-# define ALL_ARCH mips32, mips64, arm, arm64, x86, x64
-# define ALL_SHARED_ARCH arm, arm64, x86_shared, mips_shared
+# define ALL_ARCH mips32, mips64, arm, arm64, x86, x64, ppc_osx
+# define ALL_SHARED_ARCH arm, arm64, x86_shared, mips_shared, ppc_osx
 
 // * How this macro works:
 //
@@ -111,6 +113,7 @@
 # define DEFINED_ON_mips32
 # define DEFINED_ON_mips64
 # define DEFINED_ON_mips_shared
+# define DEFINED_ON_ppc_osx
 # define DEFINED_ON_none
 
 // Specialize for each architecture.
@@ -140,6 +143,9 @@
 # define DEFINED_ON_mips64 define
 # undef DEFINED_ON_mips_shared
 # define DEFINED_ON_mips_shared define
+#elif defined(JS_CODEGEN_PPC_OSX)
+# undef DEFINED_ON_ppc_osx
+# define DEFINED_ON_ppc_osx define
 #elif defined(JS_CODEGEN_NONE)
 # undef DEFINED_ON_none
 # define DEFINED_ON_none crash
@@ -438,13 +444,13 @@ class MacroAssembler : public MacroAssemblerSpecific
     // Stack manipulation functions.
 
     void PushRegsInMask(LiveRegisterSet set)
-                            DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+                            DEFINED_ON(arm, arm64, mips32, mips64, x86_shared, ppc_osx);
     void PushRegsInMask(LiveGeneralRegisterSet set);
 
     void PopRegsInMask(LiveRegisterSet set);
     void PopRegsInMask(LiveGeneralRegisterSet set);
     void PopRegsInMaskIgnore(LiveRegisterSet set, LiveRegisterSet ignore)
-                                 DEFINED_ON(arm, arm64, mips32, mips64, x86_shared);
+                                 DEFINED_ON(arm, arm64, mips32, mips64, x86_shared, ppc_osx);
 
     void Push(const Operand op) DEFINED_ON(x86_shared);
     void Push(Register reg) PER_SHARED_ARCH;
@@ -514,8 +520,8 @@ class MacroAssembler : public MacroAssemblerSpecific
     // Push the return address and make a call. On platforms where this function
     // is not defined, push the link register (pushReturnAddress) at the entry
     // point of the callee.
-    void callAndPushReturnAddress(Register reg) DEFINED_ON(mips_shared, x86_shared);
-    void callAndPushReturnAddress(Label* label) DEFINED_ON(mips_shared, x86_shared);
+    void callAndPushReturnAddress(Register reg) DEFINED_ON(mips_shared, x86_shared, ppc_osx);
+    void callAndPushReturnAddress(Label* label) DEFINED_ON(mips_shared, x86_shared, ppc_osx);
 
     void pushReturnAddress() DEFINED_ON(arm, arm64);
 
@@ -550,6 +556,7 @@ class MacroAssembler : public MacroAssemblerSpecific
     // with callWithABI.
     void setupABICall();
 
+public: // Pre/Post have to be public for our VMWrapper code.
     // Reserve the stack and resolve the arguments move.
     void callWithABIPre(uint32_t* stackAdjust, bool callFromAsmJS = false) PER_ARCH;
 
@@ -561,6 +568,7 @@ class MacroAssembler : public MacroAssemblerSpecific
 
     // Restore the stack to its state before the setup function call.
     void callWithABIPost(uint32_t stackAdjust, MoveOp::Type result) PER_ARCH;
+private:
 
     // Create the signature to be able to decode the arguments of a native
     // function, when calling a function within the simulator.
@@ -1080,8 +1088,14 @@ class MacroAssembler : public MacroAssemblerSpecific
         bind(&notNaN);
     }
 
+    // *Native typed array methods get called by the CodeGenerator for unboxed values.
+    // Because these values are not byteswapped, we use different accessors to implement
+    // TenFourFox's hybrid-endian typed array scheme.
     template<typename T>
     void loadFromTypedArray(Scalar::Type arrayType, const T& src, AnyRegister dest, Register temp, Label* fail,
+                            bool canonicalizeDoubles = true, unsigned numElems = 0);
+    template<typename T>
+    void loadFromTypedArrayNative(Scalar::Type arrayType, const T& src, AnyRegister dest, Register temp, Label* fail,
                             bool canonicalizeDoubles = true, unsigned numElems = 0);
 
     template<typename T>
@@ -1090,6 +1104,26 @@ class MacroAssembler : public MacroAssemblerSpecific
 
     template<typename S, typename T>
     void storeToTypedIntArray(Scalar::Type arrayType, const S& value, const T& dest) {
+        switch (arrayType) {
+          case Scalar::Int8:
+          case Scalar::Uint8:
+          case Scalar::Uint8Clamped:
+            store8(value, dest);
+            break;
+          case Scalar::Int16:
+          case Scalar::Uint16:
+            store16Swapped(value, dest);
+            break;
+          case Scalar::Int32:
+          case Scalar::Uint32:
+            store32ByteSwapped(value, dest);
+            break;
+          default:
+            MOZ_CRASH("Invalid typed array type");
+        }
+    }
+    template<typename S, typename T>
+    void storeToTypedIntArrayNative(Scalar::Type arrayType, const S& value, const T& dest) {
         switch (arrayType) {
           case Scalar::Int8:
           case Scalar::Uint8:

@@ -77,7 +77,9 @@ GLScreenBuffer::CreateFactory(GLContext* gl,
         switch (forwarder->GetCompositorBackendType()) {
             case mozilla::layers::LayersBackend::LAYERS_OPENGL: {
 #if defined(XP_MACOSX)
+#if(0)
                 factory = SurfaceFactory_IOSurface::Create(gl, caps, forwarder, flags);
+#endif
 #elif defined(MOZ_WIDGET_GONK)
                 factory = MakeUnique<SurfaceFactory_Gralloc>(gl, caps, forwarder, flags);
 #elif defined(GL_PROVIDER_GLX)

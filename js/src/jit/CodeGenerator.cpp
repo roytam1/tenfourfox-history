@@ -56,6 +56,37 @@ using mozilla::PositiveInfinity;
 using mozilla::UniquePtr;
 using JS::GenericNaN;
 
+#ifdef JS_CODEGEN_PPC_OSX
+#define PPC__B(l) bo_##l = masm._b(0)
+#define PPC__BC(x,y,z,l) bo_##l = masm._bc(0, masm.ma_cmp(y, z, Assembler::x))
+#define PPC_B(l) BufferOffset PPC__B(l)
+#define PPC_BC(l,x,y,z) BufferOffset PPC__BC(l,x,y,z)
+#define PPC_BB(l) masm.bindSS(bo_##l)
+#define tempRegister r0
+#define addressTempRegister r12
+
+#define PPC__ISFPR(x,l) bo_##l = masm._bc(0, masm.ma_cmp(x, ImmTag(JSVAL_TAG_CLEAR), Assembler::Below))
+#define PPC_ISFPR(x,l) BufferOffset PPC__ISFPR(x,l)
+#define PPC__ISOBJ(x,l) bo_##l = masm._bc(0, masm.ma_cmp(x, ImmTag(JSVAL_TAG_OBJECT), Assembler::Equal))
+#define PPC_ISOBJ(x,l) BufferOffset PPC__ISOBJ(x,l)
+#define PPC__ISSTR(x,l) bo_##l = masm._bc(0, masm.ma_cmp(x, ImmTag(JSVAL_TAG_STRING), Assembler::Equal))
+#define PPC_ISSTR(x,l) BufferOffset PPC__ISSTR(x,l)
+#define PPC__ISSYM(x,l) bo_##l = masm._bc(0, masm.ma_cmp(x, ImmTag(JSVAL_TAG_SYMBOL), Assembler::Equal))
+#define PPC_ISSYM(x,l) BufferOffset PPC__ISSYM(x,l)
+#define PPC__ISUNDEF(x,l) bo_##l = masm._bc(0, masm.ma_cmp(x, ImmTag(JSVAL_TAG_UNDEFINED), Assembler::Equal))
+#define PPC_ISUNDEF(x,l) BufferOffset PPC__ISUNDEF(x,l)
+#define PPC__IS(x,y,l) bo_##l = masm._bc(0, masm.ma_cmp(x, ImmType(y), Assembler::Equal))
+#define PPC_IS(x,y,l) BufferOffset PPC__IS(x,y,l)
+#define PPC__ISNOT(x,y,l) bo_##l = masm._bc(0, masm.ma_cmp(x, ImmType(y), Assembler::NotEqual))
+#define PPC_ISNOT(x,y,l) BufferOffset PPC__ISNOT(x,y,l)
+#define PPC__ISINT32(x,l) PPC__IS(x,JSVAL_TYPE_INT32,l)
+#define PPC_ISINT32(x,l) PPC_IS(x,JSVAL_TYPE_INT32,l)
+#define PPC__ISBOOL(x,l) PPC__IS(x,JSVAL_TYPE_BOOLEAN,l)
+#define PPC_ISBOOL(x,l) PPC_IS(x,JSVAL_TYPE_BOOLEAN,l)
+#define PPC__ISNULL(x,l) PPC__IS(x,JSVAL_TYPE_NULL,l)
+#define PPC_ISNULL(x,l) PPC_IS(x,JSVAL_TYPE_NULL,l)
+#endif
+
 namespace js {
 namespace jit {
 
@@ -226,6 +257,7 @@ CodeGenerator::visitValueToDouble(LValueToDouble* lir)
     Label isDouble, isInt32, isBool, isNull, isUndefined, done;
     bool hasBoolean = false, hasNull = false, hasUndefined = false;
 
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestDouble(Assembler::Equal, tag, &isDouble);
     masm.branchTestInt32(Assembler::Equal, tag, &isInt32);
 
@@ -267,6 +299,51 @@ CodeGenerator::visitValueToDouble(LValueToDouble* lir)
     masm.bind(&isDouble);
     masm.unboxDouble(operand, output);
     masm.bind(&done);
+#else
+    PPC_ISFPR(tag, isDouble);
+    PPC_ISINT32(tag, isInt32);
+    BufferOffset bo_isBool, bo_isUndefined, bo_isNull, bo_done1, bo_done2, bo_done3;
+    
+    if (mir->conversion() != MToFPInstruction::NumbersOnly) {
+        PPC__ISBOOL(tag, isBool);
+        PPC__ISUNDEF(tag, isUndefined);
+        hasBoolean = true;
+        hasUndefined = true;
+        if (mir->conversion() != MToFPInstruction::NonNullNonStringPrimitives) {
+            PPC__ISNULL(tag, isNull);
+            hasNull = true;
+        }
+    }
+
+    bailout(lir->snapshot());
+
+    if (hasNull) {
+        PPC_BB(isNull);
+        masm.loadConstantDouble(0.0, output);
+        PPC__B(done1);
+    }
+    if (hasUndefined) {
+        PPC_BB(isUndefined);
+        masm.loadConstantDouble(GenericNaN(), output);
+        PPC__B(done2);
+    }
+    if (hasBoolean) {
+        PPC_BB(isBool);
+        masm.boolValueToDouble(operand, output);
+        PPC__B(done3);
+    }
+    
+    PPC_BB(isInt32);
+    masm.int32ValueToDouble(operand, output);
+    PPC_B(done4);
+
+    PPC_BB(isDouble);
+    masm.unboxDouble(operand, output);
+    PPC_BB(done1);
+    PPC_BB(done2);
+    PPC_BB(done3);
+    PPC_BB(done4);
+#endif
 }
 
 void
@@ -281,6 +358,7 @@ CodeGenerator::visitValueToFloat32(LValueToFloat32* lir)
     Label isDouble, isInt32, isBool, isNull, isUndefined, done;
     bool hasBoolean = false, hasNull = false, hasUndefined = false;
 
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestDouble(Assembler::Equal, tag, &isDouble);
     masm.branchTestInt32(Assembler::Equal, tag, &isInt32);
 
@@ -330,6 +408,53 @@ CodeGenerator::visitValueToFloat32(LValueToFloat32* lir)
     masm.convertDoubleToFloat32(output, output);
 #endif
     masm.bind(&done);
+
+#else
+    PPC_ISFPR(tag, isDouble);
+    PPC_ISINT32(tag, isInt32);
+    BufferOffset bo_isBool, bo_isUndefined, bo_isNull, bo_done1, bo_done2, bo_done3;
+    
+    if (mir->conversion() != MToFPInstruction::NumbersOnly) {
+        PPC__ISBOOL(tag, isBool);
+        PPC__ISUNDEF(tag, isUndefined);
+        hasBoolean = true;
+        hasUndefined = true;
+        if (mir->conversion() != MToFPInstruction::NonNullNonStringPrimitives) {
+            PPC__ISNULL(tag, isNull);
+            hasNull = true;
+        }
+    }
+
+    bailout(lir->snapshot());
+
+    if (hasNull) {
+        PPC_BB(isNull);
+        masm.loadConstantFloat32(0.0f, output);
+        PPC__B(done1);
+    }
+    if (hasUndefined) {
+        PPC_BB(isUndefined);
+        masm.loadConstantFloat32(float(GenericNaN()), output);
+        PPC__B(done2);
+    }
+    if (hasBoolean) {
+        PPC_BB(isBool);
+        masm.boolValueToFloat32(operand, output);
+        PPC__B(done3);
+    }
+    
+    PPC_BB(isInt32);
+    masm.int32ValueToFloat32(operand, output);
+    PPC_B(done4);
+
+    PPC_BB(isDouble);
+    masm.unboxDouble(operand, output);
+    masm.frsp(output, output);
+    PPC_BB(done1);
+    PPC_BB(done2);
+    PPC_BB(done3);
+    PPC_BB(done4);
+#endif
 }
 
 void
@@ -824,6 +949,7 @@ CodeGenerator::visitBooleanToString(LBooleanToString* lir)
     const JSAtomState& names = GetJitContext()->runtime->names();
     Label true_, done;
 
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTest32(Assembler::NonZero, input, input, &true_);
     masm.movePtr(ImmGCPtr(names.false_), output);
     masm.jump(&done);
@@ -832,6 +958,15 @@ CodeGenerator::visitBooleanToString(LBooleanToString* lir)
     masm.movePtr(ImmGCPtr(names.true_), output);
 
     masm.bind(&done);
+#else
+    PPC_BC(NotEqual, input, Imm32(0), truth);
+    masm.movePtr(ImmGCPtr(names.false_), output);
+    PPC_B(done);
+    
+    PPC_BB(truth);
+    masm.movePtr(ImmGCPtr(names.true_), output);
+    PPC_BB(done);
+#endif
 }
 
 void
@@ -894,20 +1029,29 @@ CodeGenerator::visitValueToString(LValueToString* lir)
                                    StoreRegisterTo(output));
 
     Label done;
+    BufferOffset bo_done1, bo_done2, bo_done3, bo_done4, bo_done5, bo_done6;
     Register tag = masm.splitTagForTest(input);
     const JSAtomState& names = GetJitContext()->runtime->names();
 
     // String
     if (lir->mir()->input()->mightBeType(MIRType_String)) {
+#ifndef JS_CODEGEN_PPC_OSX
         Label notString;
         masm.branchTestString(Assembler::NotEqual, tag, &notString);
         masm.unboxString(input, output);
         masm.jump(&done);
         masm.bind(&notString);
+#else
+        BufferOffset bo_notStr = masm._bc(0, masm.ma_cmp(tag, ImmTag(JSVAL_TAG_STRING), Assembler::NotEqual));
+        masm.unboxString(input, output);
+        PPC__B(done1);
+        PPC_BB(notStr);
+#endif
     }
 
     // Integer
     if (lir->mir()->input()->mightBeType(MIRType_Int32)) {
+#ifndef JS_CODEGEN_PPC_OSX
         Label notInteger;
         masm.branchTestInt32(Assembler::NotEqual, tag, &notInteger);
         Register unboxed = ToTempUnboxRegister(lir->tempToUnbox());
@@ -915,6 +1059,14 @@ CodeGenerator::visitValueToString(LValueToString* lir)
         emitIntToString(unboxed, output, ool->entry());
         masm.jump(&done);
         masm.bind(&notInteger);
+#else
+        BufferOffset bo_notInt = masm._bc(0, masm.ma_cmp(tag, ImmType(JSVAL_TYPE_INT32), Assembler::NotEqual));
+        Register unboxed = ToTempUnboxRegister(lir->tempToUnbox());
+        unboxed = masm.extractInt32(input, unboxed);
+        emitIntToString(unboxed, output, ool->entry());
+        PPC__B(done2);
+        PPC_BB(notInt);
+#endif
     }
 
     // Double
@@ -926,24 +1078,39 @@ CodeGenerator::visitValueToString(LValueToString* lir)
 
     // Undefined
     if (lir->mir()->input()->mightBeType(MIRType_Undefined)) {
+#ifndef JS_CODEGEN_PPC_OSX
         Label notUndefined;
         masm.branchTestUndefined(Assembler::NotEqual, tag, &notUndefined);
         masm.movePtr(ImmGCPtr(names.undefined), output);
         masm.jump(&done);
         masm.bind(&notUndefined);
+#else
+        BufferOffset bo_notUndef = masm._bc(0, masm.ma_cmp(tag, ImmTag(JSVAL_TAG_UNDEFINED), Assembler::NotEqual));
+        masm.movePtr(ImmGCPtr(names.undefined), output);
+        PPC__B(done3);
+        PPC_BB(notUndef);
+#endif
     }
 
     // Null
     if (lir->mir()->input()->mightBeType(MIRType_Null)) {
+#ifndef JS_CODEGEN_PPC_OSX
         Label notNull;
         masm.branchTestNull(Assembler::NotEqual, tag, &notNull);
         masm.movePtr(ImmGCPtr(names.null), output);
         masm.jump(&done);
         masm.bind(&notNull);
+#else
+        BufferOffset bo_notUndef = masm._bc(0, masm.ma_cmp(tag, ImmType(JSVAL_TYPE_NULL), Assembler::NotEqual));
+        masm.movePtr(ImmGCPtr(names.null), output);
+        PPC__B(done4);
+        PPC_BB(notUndef);
+#endif
     }
 
     // Boolean
     if (lir->mir()->input()->mightBeType(MIRType_Boolean)) {
+#ifndef JS_CODEGEN_PPC_OSX
         Label notBoolean, true_;
         masm.branchTestBoolean(Assembler::NotEqual, tag, &notBoolean);
         masm.branchTestBooleanTruthy(true, input, &true_);
@@ -953,6 +1120,17 @@ CodeGenerator::visitValueToString(LValueToString* lir)
         masm.movePtr(ImmGCPtr(names.true_), output);
         masm.jump(&done);
         masm.bind(&notBoolean);
+#else
+        BufferOffset bo_notBool = masm._bc(0, masm.ma_cmp(tag, ImmType(JSVAL_TYPE_BOOLEAN), Assembler::NotEqual));
+        // There really isn't a non-branching way to do this without incurring a whole bunch of instructions.
+        PPC_BC(NotEqual, input.payloadReg(), Imm32(0), truth);
+        masm.movePtr(ImmGCPtr(names.false_), output);
+        PPC__B(done5);
+        PPC_BB(truth);
+        masm.movePtr(ImmGCPtr(names.true_), output);
+        PPC__B(done6);
+        PPC_BB(notBool);
+#endif
     }
 
     // Object
@@ -972,6 +1150,14 @@ CodeGenerator::visitValueToString(LValueToString* lir)
     masm.assumeUnreachable("Unexpected type for MValueToString.");
 #endif
 
+#ifdef JS_CODEGEN_PPC_OSX
+    PPC_BB(done1);
+    PPC_BB(done2);
+    PPC_BB(done3);
+    PPC_BB(done4);
+    PPC_BB(done5);
+    PPC_BB(done6);
+#endif
     masm.bind(&done);
     masm.bind(ool->rejoin());
 }
@@ -989,11 +1175,18 @@ CodeGenerator::visitValueToObjectOrNull(LValueToObjectOrNull* lir)
                                    StoreRegisterTo(output));
 
     Label done;
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestObject(Assembler::Equal, input, &done);
     masm.branchTestNull(Assembler::NotEqual, input, ool->entry());
 
     masm.bind(&done);
     masm.unboxNonDouble(input, output);
+#else
+    PPC_ISOBJ(input.typeReg(), done);
+    masm.branchTestNull(Assembler::NotEqual, input, ool->entry());
+    PPC_BB(done);
+    masm.unboxNonDouble(input, output);
+#endif
 
     masm.bind(ool->rejoin());
 }
@@ -1199,18 +1392,29 @@ CreateDependentString(MacroAssembler& masm, const JSAtomState& names,
     Label done, nonEmpty;
 
     // Zero length matches use the empty string.
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTest32(Assembler::NonZero, temp1, temp1, &nonEmpty);
     masm.movePtr(ImmGCPtr(names.empty), string);
     masm.jump(&done);
 
     masm.bind(&nonEmpty);
+#else
+    PPC_BC(NotEqual, temp1, Imm32(0), nonEmpty);
+    masm.movePtr(ImmGCPtr(names.empty), string);
+    PPC_B(done1);
+    PPC_BB(nonEmpty);
+#endif
 
     Label notInline;
 
     int32_t maxInlineLength = latin1
                               ? (int32_t) JSFatInlineString::MAX_LENGTH_LATIN1
                               : (int32_t) JSFatInlineString::MAX_LENGTH_TWO_BYTE;
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branch32(Assembler::Above, temp1, Imm32(maxInlineLength), &notInline);
+#else
+    PPC_BC(Above, temp1, Imm32(maxInlineLength), notInline);
+#endif
 
     {
         // Make a thin or fat inline string.
@@ -1219,20 +1423,33 @@ CreateDependentString(MacroAssembler& masm, const JSAtomState& names,
         int32_t maxThinInlineLength = latin1
                                       ? (int32_t) JSThinInlineString::MAX_LENGTH_LATIN1
                                       : (int32_t) JSThinInlineString::MAX_LENGTH_TWO_BYTE;
+#ifndef JS_CODEGEN_PPC_OSX
         masm.branch32(Assembler::Above, temp1, Imm32(maxThinInlineLength), &fatInline);
+#else
+        PPC_BC(Above, temp1, Imm32(maxThinInlineLength), fatInline);
+#endif
 
         int32_t thinFlags = (latin1 ? JSString::LATIN1_CHARS_BIT : 0) | JSString::INIT_THIN_INLINE_FLAGS;
         masm.newGCString(string, temp2, failure);
         masm.store32(Imm32(thinFlags), Address(string, JSString::offsetOfFlags()));
+#ifndef JS_CODEGEN_PPC_OSX
         masm.jump(&stringAllocated);
 
         masm.bind(&fatInline);
+#else
+        PPC_B(stringAllocated);
+        PPC_BB(fatInline);
+#endif
 
         int32_t fatFlags = (latin1 ? JSString::LATIN1_CHARS_BIT : 0) | JSString::INIT_FAT_INLINE_FLAGS;
         masm.newGCFatInlineString(string, temp2, failure);
         masm.store32(Imm32(fatFlags), Address(string, JSString::offsetOfFlags()));
 
+#ifndef JS_CODEGEN_PPC_OSX
         masm.bind(&stringAllocated);
+#else
+        PPC_BB(stringAllocated);
+#endif
         masm.store32(temp1, Address(string, JSString::offsetOfLength()));
 
         masm.push(string);
@@ -1266,8 +1483,13 @@ CreateDependentString(MacroAssembler& masm, const JSAtomState& names,
         masm.pop(string);
     }
 
+#ifndef JS_CODEGEN_PPC_OSX
     masm.jump(&done);
     masm.bind(&notInline);
+#else
+    PPC_B(done2);
+    PPC_BB(notInline);
+#endif
 
     {
         // Make a dependent string.
@@ -1289,6 +1511,7 @@ CreateDependentString(MacroAssembler& masm, const JSAtomState& names,
         // Follow any base pointer if the input is itself a dependent string.
         // Watch for undepended strings, which have a base pointer but don't
         // actually share their characters with it.
+#ifndef JS_CODEGEN_PPC_OSX
         Label noBase;
         masm.branchTest32(Assembler::Zero, Address(base, JSString::offsetOfFlags()),
                           Imm32(JSString::HAS_BASE_BIT), &noBase);
@@ -1297,9 +1520,24 @@ CreateDependentString(MacroAssembler& masm, const JSAtomState& names,
         masm.loadPtr(Address(base, JSDependentString::offsetOfBase()), temp1);
         masm.storePtr(temp1, Address(string, JSDependentString::offsetOfBase()));
         masm.bind(&noBase);
+#else
+        masm.load32(Address(base, JSString::offsetOfFlags()), tempRegister);
+        masm.andi_rc(addressTempRegister, tempRegister, JSString::HAS_BASE_BIT);
+        BufferOffset bo_noBase = masm._bc(0, Assembler::Zero);
+        masm.andi_rc(addressTempRegister, tempRegister, JSString::FLAT_BIT);
+        BufferOffset bo_noBase1 = masm._bc(0, Assembler::NonZero);
+        masm.loadPtr(Address(base, JSDependentString::offsetOfBase()), temp1);
+        masm.storePtr(temp1, Address(string, JSDependentString::offsetOfBase()));
+        PPC_BB(noBase);
+        PPC_BB(noBase1);
+#endif
     }
 
     masm.bind(&done);
+#ifdef JS_CODEGEN_PPC_OSX
+    PPC_BB(done1);
+    PPC_BB(done2);
+#endif
 }
 
 JitCode*
@@ -1376,6 +1614,7 @@ JitCompartment::generateRegExpExecStub(JSContext* cx)
     // Loop to construct the match strings. There are two different loops,
     // depending on whether the input is latin1.
     {
+#ifndef JS_CODEGEN_PPC_OSX
         Label isLatin1, done;
         masm.branchTest32(Assembler::NonZero, Address(input, JSString::offsetOfFlags()),
                           Imm32(JSString::LATIN1_CHARS_BIT), &isLatin1);
@@ -1406,6 +1645,42 @@ JitCompartment::generateRegExpExecStub(JSContext* cx)
         }
 
         masm.bind(&done);
+#else
+        // A few gyrations on the loop header below.
+        masm.load32(Address(input, JSString::offsetOfFlags()), tempRegister);
+        masm.andi_rc(addressTempRegister, tempRegister, JSString::LATIN1_CHARS_BIT);
+        BufferOffset bo_isLatin1 = masm._bc(0, Assembler::NonZero);
+        BufferOffset bo_done1, bo_done2;
+        
+        for (int isLatin = 0; isLatin <= 1; isLatin++) {
+            if (isLatin)
+                PPC_BB(isLatin1);
+
+            uint32_t bo_matchLoop = masm.currentOffset();
+
+            masm.load32(stringIndexAddress, tempRegister);
+            PPC_BC(LessThan, tempRegister, Imm32(0), isUndefined);
+            CreateDependentString(masm, cx->names(), isLatin, temp3, input, temp4, temp5,
+                                  stringIndexAddress, stringLimitAddress, &oolEntry);
+            masm.storeValue(JSVAL_TYPE_STRING, temp3, stringAddress);
+            PPC_B(storeDone);
+
+            PPC_BB(isUndefined);
+            masm.storeValue(UndefinedValue(), stringAddress);
+            PPC_BB(storeDone);
+
+            masm.add32(Imm32(1), matchIndex);
+            if (isLatin)
+                PPC__BC(LessThanOrEqual, pairCountAddress, matchIndex, done1);
+            else
+                PPC__BC(LessThanOrEqual, pairCountAddress, matchIndex, done2);
+
+            masm._b(bo_matchLoop - masm.currentOffset()); // We don't need to -4 because there's no cmpw.
+        }
+        
+        PPC_BB(done1);
+        PPC_BB(done2);
+#endif
     }
 
     // Fill in the rest of the output object.
@@ -2051,6 +2326,7 @@ CodeGenerator::visitTableSwitchV(LTableSwitchV* ins)
     Register tag = masm.extractTag(value, index);
     masm.branchTestNumber(Assembler::NotEqual, tag, defaultcase);
 
+#ifndef JS_CODEGEN_PPC_OSX
     Label unboxInt, isInt;
     masm.branchTestInt32(Assembler::Equal, tag, &unboxInt);
     {
@@ -2064,6 +2340,17 @@ CodeGenerator::visitTableSwitchV(LTableSwitchV* ins)
     masm.unboxInt32(value, index);
 
     masm.bind(&isInt);
+#else
+    PPC_ISINT32(tag, isInt1);
+    FloatRegister floatIndex = ToFloatRegister(ins->tempFloat());
+    masm.unboxDouble(value, floatIndex);
+    masm.convertDoubleToInt32(floatIndex, index, defaultcase, false);
+    PPC_B(isInt2);
+    
+    PPC_BB(isInt1);
+    masm.unboxInt32(value, index);
+    PPC_BB(isInt2);
+#endif
 
     emitTableSwitchDispatch(mir, index, ToRegisterOrInvalid(ins->tempPointer()));
 }
@@ -2205,6 +2492,7 @@ CodeGenerator::visitOsrReturnValue(LOsrReturnValue* lir)
     Address flags = Address(ToRegister(frame), BaselineFrame::reverseOffsetOfFlags());
     Address retval = Address(ToRegister(frame), BaselineFrame::reverseOffsetOfReturnValue());
 
+// Inexplicably, there was a severe penalty to optimizing this branch, at least on G5.
     masm.moveValue(UndefinedValue(), out);
 
     Label done;
@@ -2597,6 +2885,7 @@ CodeGenerator::visitMaybeToDoubleElement(LMaybeToDoubleElement* lir)
     ValueOperand out = ToOutValue(lir);
 
     FloatRegister temp = ToFloatRegister(lir->tempFloat());
+#ifndef JS_CODEGEN_PPC_OSX
     Label convert, done;
 
     // If the CONVERT_DOUBLE_ELEMENTS flag is set, convert the int32
@@ -2614,6 +2903,22 @@ CodeGenerator::visitMaybeToDoubleElement(LMaybeToDoubleElement* lir)
     masm.boxDouble(temp, out);
 
     masm.bind(&done);
+#else
+    masm.load32(Address(elements, ObjectElements::offsetOfFlags()), tempRegister);
+    masm.andi_rc(addressTempRegister, tempRegister, ObjectElements::CONVERT_DOUBLE_ELEMENTS);
+    BufferOffset bo_convert = masm._bc(0, Assembler::NonZero);
+    
+    masm.tagValue(JSVAL_TYPE_INT32, value, out);
+    PPC_B(done);
+    
+    PPC_BB(convert);
+    // I thought about this and we don't save many instructions by trying to
+    // peephole these together, since we still have to build an intermediate
+    // float to do the normalization step at the end.
+    masm.convertInt32ToDouble(value, temp);
+    masm.boxDouble(temp, out);
+    PPC_BB(done);
+#endif
 }
 
 typedef bool (*CopyElementsForWriteFn)(ExclusiveContext*, NativeObject*);
@@ -2931,6 +3236,7 @@ LoadDOMPrivate(MacroAssembler& masm, Register obj, Register priv)
     // Check shape->numFixedSlots != 0.
     masm.loadPtr(Address(obj, JSObject::offsetOfShape()), priv);
 
+#ifndef JS_CODEGEN_PPC_OSX
     Label hasFixedSlots, done;
     masm.branchTest32(Assembler::NonZero,
                       Address(priv, Shape::offsetOfSlotInfo()),
@@ -2946,6 +3252,19 @@ LoadDOMPrivate(MacroAssembler& masm, Register obj, Register priv)
     masm.loadPrivate(Address(obj, NativeObject::getFixedSlotOffset(0)), priv);
 
     masm.bind(&done);
+#else
+    masm.lwz(tempRegister, priv, Shape::offsetOfSlotInfo());
+    masm.x_li32(addressTempRegister, Shape::fixedSlotsMask());
+    masm.and__rc(addressTempRegister, tempRegister, addressTempRegister);
+    BufferOffset bo_hasFixedS = masm._bc(0, Assembler::NonZero);
+    masm.loadPtr(Address(obj, NativeObject::offsetOfSlots()), priv);
+    masm.loadPrivate(Address(priv, 0), priv);
+    PPC_B(done);
+    
+    PPC_BB(hasFixedS);
+    masm.loadPrivate(Address(obj, NativeObject::getFixedSlotOffset(0)), priv);
+    PPC_BB(done);
+#endif
 }
 
 void
@@ -3101,6 +3420,7 @@ CodeGenerator::visitCallGeneric(LCallGeneric* call)
 
     // Guard that calleereg is actually a function object.
     masm.loadObjClass(calleereg, nargsreg);
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchPtr(Assembler::NotEqual, nargsreg, ImmPtr(&JSFunction::class_), &invoke);
 
     // Guard that calleereg is an interpreted function with a JSScript.
@@ -3117,6 +3437,40 @@ CodeGenerator::visitCallGeneric(LCallGeneric* call)
 
     // Load script jitcode.
     masm.loadBaselineOrIonRaw(objreg, objreg, &invoke);
+#else
+    masm.x_li32(tempRegister, (uint32_t)(&JSFunction::class_));
+    masm.cmplw(tempRegister, nargsreg);
+    BufferOffset bo_invoke = masm._bc(0, Assembler::NotEqual);
+    BufferOffset bo_invoke1, bo_invoke2;
+    
+    // We can save some instructions by peepholing these calls.
+    if (call->mir()->isConstructing()) {
+        masm.load32(Address(calleereg, JSFunction::offsetOfNargs()), nargsreg);
+        int32_t bits = IMM32_16ADJ(JSFunction::INTERPRETED);
+        masm.andi_rc(tempRegister, nargsreg, bits);
+        bo_invoke1 = masm._bc(0, Assembler::Zero);
+        
+        bits = IMM32_16ADJ(JSFunction::CONSTRUCTOR);
+        masm.andi_rc(tempRegister, nargsreg, bits);
+        bo_invoke2 = masm._bc(0, Assembler::Zero);
+    } else {
+        masm.load32(Address(calleereg, JSFunction::offsetOfNargs()), tempRegister);
+        int32_t bit = IMM32_16ADJ(JSFunction::INTERPRETED);
+        masm.andi_rc(addressTempRegister, tempRegister, bit);
+        bo_invoke1 = masm._bc(0, Assembler::Zero);
+        
+        int32_t mask = IMM32_16ADJ(JSFunction::FUNCTION_KIND_MASK);
+        bit = IMM32_16ADJ(JSFunction::ClassConstructor << JSFunction::FUNCTION_KIND_SHIFT);
+        masm.x_li32(objreg, mask);
+        masm.and_(addressTempRegister, objreg, tempRegister);
+        masm.cmplwi(tempRegister, bit);
+        bo_invoke2 = masm._bc(0, Assembler::Equal);
+    }
+
+    masm.loadPtr(Address(calleereg, JSFunction::offsetOfNativeOrScript()), objreg);
+    masm.loadPtr(Address(objreg, JSScript::offsetOfBaselineOrIonRaw()), objreg);
+    PPC_BC(Equal, objreg, Imm32(0), invoke3);
+#endif
 
     // Nestle the StackPointer up to the argument vector.
     masm.freeStack(unusedStack);
@@ -3133,11 +3487,17 @@ CodeGenerator::visitCallGeneric(LCallGeneric* call)
     DebugOnly<unsigned> numNonArgsOnStack = 1 + call->isConstructing();
     MOZ_ASSERT(call->numActualArgs() == call->mir()->numStackArgs() - numNonArgsOnStack);
     masm.load16ZeroExtend(Address(calleereg, JSFunction::offsetOfNargs()), nargsreg);
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branch32(Assembler::Above, nargsreg, Imm32(call->numActualArgs()), &thunk);
     masm.jump(&makeCall);
 
     // Argument fixed needed. Load the ArgumentsRectifier.
     masm.bind(&thunk);
+#else
+    PPC_BC(Above, nargsreg, Imm32(call->numActualArgs()), thunk);
+    PPC_B(makeCall);
+    PPC_BB(thunk);
+#endif
     {
         MOZ_ASSERT(ArgumentsRectifierReg != objreg);
         masm.movePtr(ImmGCPtr(argumentsRectifier), objreg); // Necessary for GC marking.
@@ -3147,6 +3507,9 @@ CodeGenerator::visitCallGeneric(LCallGeneric* call)
 
     // Finally call the function in objreg.
     masm.bind(&makeCall);
+#ifdef JS_CODEGEN_PPC_OSX
+    PPC_BB(makeCall);
+#endif
     uint32_t callOffset = masm.callJit(objreg);
     markSafepointAt(callOffset, call);
 
@@ -3154,22 +3517,42 @@ CodeGenerator::visitCallGeneric(LCallGeneric* call)
     // The return address has already been removed from the Ion frame.
     int prefixGarbage = sizeof(JitFrameLayout) - sizeof(void*);
     masm.adjustStack(prefixGarbage - unusedStack);
+#ifndef JS_CODEGEN_PPC_OSX
     masm.jump(&end);
+#else
+    PPC_B(end);
+#endif
 
     // Handle uncompiled or native functions.
     masm.bind(&invoke);
+#ifdef JS_CODEGEN_PPC_OSX
+    PPC_BB(invoke);
+    PPC_BB(invoke1);
+    PPC_BB(invoke2);
+    PPC_BB(invoke3);
+#endif
     emitCallInvokeFunction(call, calleereg, call->isConstructing(), call->numActualArgs(),
                            unusedStack);
 
     masm.bind(&end);
+#ifdef JS_CODEGEN_PPC_OSX
+    PPC_BB(end);
+#endif
 
     // If the return value of the constructing function is Primitive,
     // replace the return value with the Object from CreateThis.
     if (call->mir()->isConstructing()) {
+#ifndef JS_CODEGEN_PPC_OSX
         Label notPrimitive;
         masm.branchTestPrimitive(Assembler::NotEqual, JSReturnOperand, &notPrimitive);
         masm.loadValue(Address(masm.getStackPointer(), unusedStack), JSReturnOperand);
         masm.bind(&notPrimitive);
+#else
+        BufferOffset bo_noP = masm._bc(0, masm.ma_cmp(JSReturnOperand.typeReg(),
+            ImmTag(JSVAL_UPPER_EXCL_TAG_OF_PRIMITIVE_SET), Assembler::AboveOrEqual));
+        masm.loadValue(Address(masm.getStackPointer(), unusedStack), JSReturnOperand);
+        PPC_BB(noP);
+#endif
     }
 }
 
@@ -3219,6 +3602,7 @@ CodeGenerator::visitCallKnown(LCallKnown* call)
 
     MOZ_ASSERT_IF(target->isClassConstructor(), call->isConstructing());
 
+#ifndef JS_CODEGEN_PPC_OSX
     // The calleereg is known to be a non-native function, but might point to
     // a LazyScript instead of a JSScript.
     masm.branchIfFunctionHasNoScript(calleereg, &uncompiled);
@@ -3231,6 +3615,21 @@ CodeGenerator::visitCallKnown(LCallKnown* call)
         masm.loadBaselineOrIonRaw(objreg, objreg, &uncompiled);
     else
         masm.loadBaselineOrIonNoArgCheck(objreg, objreg, &uncompiled);
+#else
+    masm.lwz(tempRegister, calleereg, JSFunction::offsetOfNargs());
+    int32_t bit = IMM32_16ADJ(JSFunction::INTERPRETED);
+    masm.andi_rc(addressTempRegister, tempRegister, bit);
+    BufferOffset bo_uncompiled = masm._bc(0, Assembler::Zero);
+    
+    masm.loadPtr(Address(calleereg, JSFunction::offsetOfNativeOrScript()), objreg);
+    
+    if (call->mir()->needsArgCheck()) {
+        masm.loadPtr(Address(objreg, JSScript::offsetOfBaselineOrIonRaw()), objreg);
+    } else {
+        masm.loadPtr(Address(objreg, JSScript::offsetOfBaselineOrIonSkipArgCheck()), objreg);
+    }
+    PPC_BC(Equal, objreg, Imm32(0), uncompiled2);
+#endif
 
     // Nestle the StackPointer up to the argument vector.
     masm.freeStack(unusedStack);
@@ -3249,15 +3648,22 @@ CodeGenerator::visitCallKnown(LCallKnown* call)
     // The return address has already been removed from the Ion frame.
     int prefixGarbage = sizeof(JitFrameLayout) - sizeof(void*);
     masm.adjustStack(prefixGarbage - unusedStack);
+#ifndef JS_CODEGEN_PPC_OSX
     masm.jump(&end);
 
     // Handle uncompiled functions.
     masm.bind(&uncompiled);
+#else
+    PPC_B(end);
+    PPC_BB(uncompiled);
+    PPC_BB(uncompiled2);
+#endif
     if (call->isConstructing() && target->nargs() > call->numActualArgs())
         emitCallInvokeFunctionShuffleNewTarget(call, calleereg, target->nargs(), unusedStack);
     else
         emitCallInvokeFunction(call, calleereg, call->isConstructing(), call->numActualArgs(), unusedStack);
 
+#ifndef JS_CODEGEN_PPC_OSX
     masm.bind(&end);
 
     // If the return value of the constructing function is Primitive,
@@ -3268,6 +3674,15 @@ CodeGenerator::visitCallKnown(LCallKnown* call)
         masm.loadValue(Address(masm.getStackPointer(), unusedStack), JSReturnOperand);
         masm.bind(&notPrimitive);
     }
+#else
+    PPC_BB(end);
+    if (call->mir()->isConstructing()) {
+        BufferOffset bo_noP = masm._bc(0, masm.ma_cmp(JSReturnOperand.typeReg(),
+            ImmTag(JSVAL_UPPER_EXCL_TAG_OF_PRIMITIVE_SET), Assembler::AboveOrEqual));
+        masm.loadValue(Address(masm.getStackPointer(), unusedStack), JSReturnOperand);
+        PPC_BB(noP);
+    }
+#endif
 }
 
 template<typename T>
@@ -3300,6 +3715,7 @@ CodeGenerator::emitAllocateSpaceForApply(Register argcreg, Register extraStackSp
     // Initialize the loop counter AND Compute the stack usage (if == 0)
     masm.movePtr(argcreg, extraStackSpace);
 
+#ifndef JS_CODEGEN_PPC_OSX
     // Align the JitFrameLayout on the JitStackAlignment.
     if (JitStackValueAlignment > 1) {
         MOZ_ASSERT(frameSize() % JitStackAlignment == 0,
@@ -3311,6 +3727,13 @@ CodeGenerator::emitAllocateSpaceForApply(Register argcreg, Register extraStackSp
         masm.addPtr(Imm32(1), extraStackSpace);
         masm.bind(&noPaddingNeeded);
     }
+#else
+    // Some of our code blocks inline this and assume a value alignment of 1.
+    MOZ_ASSERT(JitStackValueAlignment == 1);
+#endif
+
+    // Skip the copy of arguments if there are none.
+    masm.branchTestPtr(Assembler::Zero, argcreg, argcreg, end);
 
     // Reserve space for copying the arguments.
     NativeObject::elementsSizeMustNotOverflow();
@@ -3331,9 +3754,6 @@ CodeGenerator::emitAllocateSpaceForApply(Register argcreg, Register extraStackSp
         masm.bind(&noPaddingNeeded);
     }
 #endif
-
-    // Skip the copy of arguments if there are none.
-    masm.branchTestPtr(Assembler::Zero, argcreg, argcreg, end);
 }
 
 // Destroys argvIndex and copyreg.
@@ -3341,6 +3761,7 @@ void
 CodeGenerator::emitCopyValuesForApply(Register argvSrcBase, Register argvIndex, Register copyreg,
                                       size_t argvSrcOffset, size_t argvDstOffset)
 {
+#ifndef JS_CODEGEN_PPC_OSX
     Label loop;
     masm.bind(&loop);
 
@@ -3361,6 +3782,29 @@ CodeGenerator::emitCopyValuesForApply(Register argvSrcBase, Register argvIndex, 
     }
 
     masm.decBranchPtr(Assembler::NonZero, argvIndex, Imm32(1), &loop);
+#else
+    // Use CTR and bdnz for this.
+    // The generated code does three totally unnecessary rlwinms since they were
+    // already computed once. We can compute it once, and then use it repeatedly.
+    // The values are not aligned on the stack, so use GPRs.
+    masm.x_mtctr(argvIndex);
+    masm.rlwinm(argvIndex, argvIndex, 3, 0, 28);
+    uint32_t looptop = masm.currentOffset();
+    
+    masm.add(addressTempRegister, argvSrcBase, argvIndex);
+    masm.lwz(tempRegister, addressTempRegister, argvSrcOffset - 2 * sizeof(void*));
+    masm.add(addressTempRegister, r1, argvIndex);
+    masm.stw(tempRegister, addressTempRegister, argvDstOffset - 2 * sizeof(void*));
+    
+    masm.add(addressTempRegister, argvSrcBase, argvIndex);
+    masm.lwz(tempRegister, addressTempRegister, argvSrcOffset - sizeof(void*));
+    masm.add(addressTempRegister, r1, argvIndex);
+    masm.stw(tempRegister, addressTempRegister, argvDstOffset - sizeof(void*));
+
+    // addi/bdnz doesn't serialize CR, so it's a bit faster than addi./bne would be.
+    masm.addi(argvIndex, argvIndex, -8);
+    masm.x_bdnz(looptop - masm.currentOffset());
+#endif
 }
 
 void
@@ -3378,7 +3822,15 @@ CodeGenerator::emitPushArguments(LApplyArgsGeneric* apply, Register extraStackSp
     Register copyreg = ToRegister(apply->getTempObject());
 
     Label end;
+#ifndef JS_CODEGEN_PPC_OSX
     emitAllocateSpaceForApply(argcreg, extraStackSpace, &end);
+#else
+    masm.movePtr(argcreg, extraStackSpace);
+    NativeObject::elementsSizeMustNotOverflow();
+    PPC_BC(Equal, argcreg, Imm32(0), end);
+    masm.lshiftPtr(Imm32(ValueShift), extraStackSpace);
+    masm.subFromStackPtr(extraStackSpace);
+#endif
 
     // We are making a copy of the arguments which are above the JitFrameLayout
     // of the current Ion frame.
@@ -3414,6 +3866,9 @@ CodeGenerator::emitPushArguments(LApplyArgsGeneric* apply, Register extraStackSp
 
     // Join with all arguments copied and the extra stack usage computed.
     masm.bind(&end);
+#if JS_CODEGEN_PPC_OSX
+    PPC_BB(end);
+#endif
 
     // Push |this|.
     masm.addPtr(Imm32(sizeof(Value)), extraStackSpace);
@@ -3436,7 +3891,15 @@ CodeGenerator::emitPushArguments(LApplyArrayGeneric* apply, Register extraStackS
     masm.load32(length, tmpArgc);
 
     // Allocate space for the values.
+#ifndef JS_CODEGEN_PPC_OSX
     emitAllocateSpaceForApply(tmpArgc, extraStackSpace, &noCopy);
+#else
+    masm.movePtr(tmpArgc, extraStackSpace);
+    NativeObject::elementsSizeMustNotOverflow();
+    PPC_BC(Equal, tmpArgc, Imm32(0), noCopy);
+    masm.lshiftPtr(Imm32(ValueShift), extraStackSpace);
+    masm.subFromStackPtr(extraStackSpace);
+#endif
 
     // Copy the values.  This code is skipped entirely if there are
     // no values.
@@ -3458,15 +3921,23 @@ CodeGenerator::emitPushArguments(LApplyArrayGeneric* apply, Register extraStackS
     // Restore.
     masm.pop(elementsAndArgc);
     masm.pop(extraStackSpace);
+#ifndef JS_CODEGEN_PPC_OSX
     masm.jump(&epilogue);
 
     // Clear argc if we skipped the copy step.
     masm.bind(&noCopy);
+#else
+    PPC_B(epilogue);
+    PPC_BB(noCopy);
+#endif
     masm.movePtr(ImmPtr(0), elementsAndArgc);
 
     // Join with all arguments copied and the extra stack usage computed.
     // Note, "elements" has become "argc".
     masm.bind(&epilogue);
+#ifdef JS_CODEGEN_PPC_OSX
+    PPC_BB(epilogue);
+#endif
 
     // Push |this|.
     masm.addPtr(Imm32(sizeof(Value)), extraStackSpace);
@@ -3517,6 +3988,7 @@ CodeGenerator::emitApplyGeneric(T* apply)
         return;
     }
 
+#ifndef JS_CODEGEN_PPC_OSX
     Label end, invoke;
 
     // Guard that calleereg is an interpreted function with a JSScript.
@@ -3527,6 +3999,15 @@ CodeGenerator::emitApplyGeneric(T* apply)
 
     // Load script jitcode.
     masm.loadBaselineOrIonRaw(objreg, objreg, &invoke);
+#else
+    masm.loadPtr(Address(calleereg, JSFunction::offsetOfNargs()), tempRegister);
+    int32_t bit = IMM32_16ADJ(JSFunction::INTERPRETED);
+    masm.andi_rc(addressTempRegister, tempRegister, bit);
+    BufferOffset bo_invoke1 = masm._bc(0, Assembler::Zero);
+    masm.loadPtr(Address(calleereg, JSFunction::offsetOfNativeOrScript()), objreg);
+    masm.loadPtr(Address(objreg, JSScript::offsetOfBaselineOrIonRaw()), objreg);
+    PPC_BC(Equal, objreg, Imm32(0), invoke2);
+#endif
 
     // Call with an Ion frame or a rectifier frame.
     {
@@ -3540,6 +4021,7 @@ CodeGenerator::emitApplyGeneric(T* apply)
         masm.Push(calleereg);
         masm.Push(stackSpace); // descriptor
 
+#ifndef JS_CODEGEN_PPC_OSX
         Label underflow, rejoin;
 
         // Check whether the provided arguments satisfy target argc.
@@ -3570,7 +4052,26 @@ CodeGenerator::emitApplyGeneric(T* apply)
         }
 
         masm.bind(&rejoin);
-
+#else
+        BufferOffset bo_underflow;
+        
+        if (!apply->hasSingleTarget()) {
+            Register nformals = extraStackSpace;
+            masm.load16ZeroExtend(Address(calleereg, JSFunction::offsetOfNargs()), nformals);
+            bo_underflow = masm._bc(0, masm.ma_cmp(argcreg, nformals, Assembler::Below));
+        } else {
+            bo_underflow = masm._bc(0, masm.ma_cmp(argcreg, Imm32(apply->getSingleTarget()->nargs()), Assembler::Below));
+        }
+        PPC_B(rejoin);
+        PPC_BB(underflow);
+        
+        JitCode* argumentsRectifier = gen->jitRuntime()->getArgumentsRectifier();
+        MOZ_ASSERT(ArgumentsRectifierReg != objreg);
+        masm.movePtr(ImmGCPtr(argumentsRectifier), objreg);
+        masm.loadPtr(Address(objreg, JitCode::offsetOfCode()), objreg);
+        masm.movePtr(argcreg, ArgumentsRectifierReg);
+        PPC_BB(rejoin);
+#endif
         // Finally call the function in objreg, as assigned by one of the paths above.
         uint32_t callOffset = masm.callJit(objreg);
         markSafepointAt(callOffset, apply);
@@ -3584,9 +4085,12 @@ CodeGenerator::emitApplyGeneric(T* apply)
         // The return address has already been removed from the Ion frame.
         int prefixGarbage = sizeof(JitFrameLayout) - sizeof(void*);
         masm.adjustStack(prefixGarbage);
+#ifndef JS_CODEGEN_PPC_OSX
         masm.jump(&end);
+#endif
     }
 
+#ifndef JS_CODEGEN_PPC_OSX
     // Handle uncompiled or native functions.
     {
         masm.bind(&invoke);
@@ -3595,6 +4099,14 @@ CodeGenerator::emitApplyGeneric(T* apply)
 
     // Pop arguments and continue.
     masm.bind(&end);
+#else
+    PPC_B(end);
+    PPC_BB(invoke1);
+    PPC_BB(invoke2);
+    emitCallInvokeFunction(apply, extraStackSpace);
+    PPC_BB(end);
+#endif
+
     emitPopArguments(extraStackSpace);
 }
 
@@ -4128,7 +4640,7 @@ CodeGenerator::emitAssertResultV(const ValueOperand input, const TemporaryTypeSe
 void
 CodeGenerator::emitObjectOrStringResultChecks(LInstruction* lir, MDefinition* mir)
 {
-    if (lir->numDefs() == 0)
+    if (masm.oom() || lir->numDefs() == 0)
         return;
 
     MOZ_ASSERT(lir->numDefs() == 1);
@@ -5325,7 +5837,7 @@ CodeGenerator::visitSetTypedObjectOffset(LSetTypedObjectOffset* lir)
     masm.addPtr(ImmWord(InlineTypedObject::offsetOfDataStart()), temp0);
 
     masm.bind(&done);
-
+    
     // Compute the new data pointer and set it in the object.
     masm.addPtr(offset, temp0);
     masm.storePtr(temp0, Address(object, OutlineTypedObject::offsetOfData()));
@@ -5353,6 +5865,7 @@ CodeGenerator::visitMinMaxI(LMinMaxI* ins)
                                 ? Assembler::GreaterThan
                                 : Assembler::LessThan;
 
+#ifndef JS_CODEGEN_PPC_OSX
     if (ins->second()->isConstant()) {
         masm.branch32(cond, first, Imm32(ToInt32(ins->second())), &done);
         masm.move32(Imm32(ToInt32(ins->second())), output);
@@ -5362,6 +5875,55 @@ CodeGenerator::visitMinMaxI(LMinMaxI* ins)
     }
 
     masm.bind(&done);
+#else
+#if(1)
+    // Branchless version that handles INT_MIN. G5 can run in as little
+    // as two dispatch groups with register renaming and optimal lead in.
+    // We can always clobber addressTempRegister and first, but we can't
+    // clobber second, which could be a temp register, so we recruit the
+    // emergency temp here instead.
+    Register second;
+    if (ins->second()->isConstant()) {
+        second = emergencyTempRegister;
+        masm.x_li32(emergencyTempRegister, ToInt32(ins->second()));
+    } else
+        second = ToRegister(ins->second());
+    // Compute -(x < y) to addressTempRegister.
+    masm.subfc(tempRegister, second, first);
+    masm.eqv(addressTempRegister, second, first);
+    masm.x_srwi(tempRegister, addressTempRegister, 31);
+    masm.addze(addressTempRegister, tempRegister);
+    masm.rlwinm(tempRegister, addressTempRegister, 0, 31, 31);
+    masm.neg(addressTempRegister, tempRegister);
+    // Compute (x ^ y) to tempRegister.
+    masm.xor_(tempRegister, first, second);
+    // Compute ((x ^ y) & -(x < y)) to addressTempRegister.
+    masm.and_(addressTempRegister, tempRegister, addressTempRegister);
+    // Finally, xor against first or second, depending on operation.
+    masm.xor_(output, (ins->mir()->isMax()) ? first : second,
+        addressTempRegister);
+#else
+    // Optimized branchy version.
+    BufferOffset k;
+    if (ins->second()->isConstant()) {
+        MOZ_ASSERT(first != tempRegister);
+        k = masm._bc(0, masm.ma_cmp(first, Imm32(ToInt32(ins->second())),
+            cond));
+        // If the value fit in 16 bits, we must load it here, because
+        // we would have cmpwi'ed with that as an immediate.
+        // If it didn't, we can move it from the temp we loaded to and
+        // potentially save an instruction.
+        if (Imm16::IsInSignedRange(ToInt32(ins->second())))
+            masm.x_li32(output, ToInt32(ins->second()));
+        else // assume tempRegister got it, see ma_cmp
+            masm.x_mr(output, tempRegister);
+    } else {
+        k = masm._bc(0, masm.ma_cmp(first, ToRegister(ins->second()), cond));
+        masm.x_mr(output, ToRegister(ins->second()));
+    }
+    masm.bindSS(k);
+#endif
+#endif
 }
 
 void
@@ -5371,10 +5933,11 @@ CodeGenerator::visitAbsI(LAbsI* ins)
     Label positive;
 
     MOZ_ASSERT(input == ToRegister(ins->output()));
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTest32(Assembler::NotSigned, input, input, &positive);
     masm.neg32(input);
     LSnapshot* snapshot = ins->snapshot();
-#if defined(JS_CODEGEN_MIPS32) || defined(JS_CODEGEN_MIPS64)
+#if defined(JS_CODEGEN_MIPS32) || defined(JS_CODEGEN_MIPS64) || defined(JS_CODEGEN_PPC_OSX)
     if (snapshot)
         bailoutCmp32(Assembler::Equal, input, Imm32(INT32_MIN), snapshot);
 #else
@@ -5382,6 +5945,21 @@ CodeGenerator::visitAbsI(LAbsI* ins)
         bailoutIf(Assembler::Overflow, snapshot);
 #endif
     masm.bind(&positive);
+#else
+    LSnapshot* snapshot = ins->snapshot();
+    if (snapshot) {
+        masm.cmpwi(input, 0);
+        BufferOffset k = masm._bc(0, Assembler::GreaterThanOrEqual);
+        masm.neg32(input);
+        bailoutCmp32(Assembler::Equal, input, Imm32(INT32_MIN), snapshot);
+        masm.bindSS(k);
+    } else {
+        // If there is no snapshot, use a branchless version.
+        masm.srawi(tempRegister, input, 31);
+        masm.add(addressTempRegister, tempRegister, input);
+        masm.xor_(input, addressTempRegister, tempRegister);
+    }
+#endif
 }
 
 void
@@ -6021,8 +6599,15 @@ CopyStringChars(MacroAssembler& masm, Register to, Register from, Register len,
     MOZ_ASSERT(toWidth == 1 || toWidth == 2);
     MOZ_ASSERT_IF(toWidth == 1, fromWidth == 1);
 
+#ifndef JS_CODEGEN_PPC_OSX
     Label start;
     masm.bind(&start);
+#else
+    // Use bdnz.
+    masm.x_mtctr(len);
+    uint32_t looptop = masm.currentOffset();
+#endif
+
     if (fromWidth == 2)
         masm.load16ZeroExtend(Address(from, 0), byteOpScratch);
     else
@@ -6033,7 +6618,11 @@ CopyStringChars(MacroAssembler& masm, Register to, Register from, Register len,
         masm.store8(byteOpScratch, Address(to, 0));
     masm.addPtr(Imm32(fromWidth), from);
     masm.addPtr(Imm32(toWidth), to);
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchSub32(Assembler::NonZero, Imm32(1), len, &start);
+#else
+    masm.x_bdnz(looptop - masm.currentOffset());
+#endif
 }
 
 static void
@@ -6043,6 +6632,7 @@ CopyStringCharsMaybeInflate(MacroAssembler& masm, Register input, Register destC
     // destChars is TwoByte and input is a Latin1 or TwoByte string, so we may
     // have to inflate.
 
+#ifndef JS_CODEGEN_PPC_OSX
     Label isLatin1, done;
     masm.loadStringLength(input, temp1);
     masm.branchTest32(Assembler::NonZero, Address(input, JSString::offsetOfFlags()),
@@ -6058,6 +6648,38 @@ CopyStringCharsMaybeInflate(MacroAssembler& masm, Register input, Register destC
         CopyStringChars(masm, destChars, input, temp1, temp2, sizeof(char), sizeof(char16_t));
     }
     masm.bind(&done);
+#else
+    // The above is very, very inefficient since it does a lot of unnecessary work.
+    // In particular, we only need to loadStringChars once, and we can check the flags
+    // repeatedly off one register instead of lots of fetches.
+    //
+    // Load flags into tempRegister.
+    masm.lwz(tempRegister, input, JSString::offsetOfFlags());
+    // Load length into temp1.
+    masm.loadStringLength(input, temp1);
+    // Convert input into a pointer to its characters.
+    masm.andi_rc(addressTempRegister, tempRegister, JSString::INLINE_CHARS_BIT);
+    BufferOffset isInline = masm._bc(0, Assembler::NonZero);
+    
+    masm.lwz(input, input, JSString::offsetOfNonInlineChars());
+    PPC_B(donei);
+    
+    masm.bindSS(isInline);
+    masm.addi(input, input, JSInlineString::offsetOfInlineStorage());
+    PPC_BB(donei);
+    
+    // Test for Latin-1.
+    masm.andi_rc(addressTempRegister, tempRegister, JSString::LATIN1_CHARS_BIT);
+    BufferOffset bo_isLatin1 = masm._bc(0, Assembler::NonZero);
+    
+    CopyStringChars(masm, destChars, input, temp1, temp2, sizeof(char16_t), sizeof(char16_t));
+    PPC_B(done);
+    
+    PPC_BB(isLatin1);
+    CopyStringChars(masm, destChars, input, temp1, temp2, sizeof(char), sizeof(char16_t));
+    
+    PPC_BB(done);
+#endif
 }
 
 static void
@@ -9293,11 +9915,17 @@ CodeGenerator::visitLoadUnboxedScalar(LLoadUnboxedScalar* lir)
     Label fail;
     if (lir->index()->isConstant()) {
         Address source(elements, ToInt32(lir->index()) * width + mir->offsetAdjustment());
-        masm.loadFromTypedArray(readType, source, out, temp, &fail, canonicalizeDouble, numElems);
+        if (mir->target() == MLoadUnboxedScalar::TypedArrayTarget)
+            masm.loadFromTypedArray(readType, source, out, temp, &fail, canonicalizeDouble, numElems);
+        else
+            masm.loadFromTypedArrayNative(readType, source, out, temp, &fail, canonicalizeDouble, numElems);
     } else {
         BaseIndex source(elements, ToRegister(lir->index()), ScaleFromElemWidth(width),
                          mir->offsetAdjustment());
-        masm.loadFromTypedArray(readType, source, out, temp, &fail, canonicalizeDouble, numElems);
+        if (mir->target() == MLoadUnboxedScalar::TypedArrayTarget)
+            masm.loadFromTypedArray(readType, source, out, temp, &fail, canonicalizeDouble, numElems);
+        else
+            masm.loadFromTypedArrayNative(readType, source, out, temp, &fail, canonicalizeDouble, numElems);
     }
 
     if (fail.used())
@@ -9363,6 +9991,24 @@ StoreToTypedArray(MacroAssembler& masm, Scalar::Type writeType, const LAllocatio
     }
 }
 
+template <typename T>
+static inline void
+StoreToTypedArrayNative(MacroAssembler& masm, Scalar::Type writeType, const LAllocation* value,
+                  const T& dest, unsigned numElems = 0)
+{
+    if (Scalar::isSimdType(writeType) ||
+        writeType == Scalar::Float32 ||
+        writeType == Scalar::Float64)
+    {
+        masm.storeToTypedFloatArray(writeType, ToFloatRegister(value), dest, numElems);
+    } else {
+        if (value->isConstant())
+            masm.storeToTypedIntArrayNative(writeType, Imm32(ToInt32(value)), dest);
+        else
+            masm.storeToTypedIntArrayNative(writeType, ToRegister(value), dest);
+    }
+}
+
 void
 CodeGenerator::visitStoreUnboxedScalar(LStoreUnboxedScalar* lir)
 {
@@ -9378,11 +10024,17 @@ CodeGenerator::visitStoreUnboxedScalar(LStoreUnboxedScalar* lir)
 
     if (lir->index()->isConstant()) {
         Address dest(elements, ToInt32(lir->index()) * width + mir->offsetAdjustment());
-        StoreToTypedArray(masm, writeType, value, dest, numElems);
+        if (mir->target() == MStoreUnboxedScalar::TypedArrayTarget)
+            StoreToTypedArray(masm, writeType, value, dest, numElems);
+        else
+            StoreToTypedArrayNative(masm, writeType, value, dest, numElems);
     } else {
         BaseIndex dest(elements, ToRegister(lir->index()), ScaleFromElemWidth(width),
                        mir->offsetAdjustment());
-        StoreToTypedArray(masm, writeType, value, dest, numElems);
+        if (mir->target() == MStoreUnboxedScalar::TypedArrayTarget)
+            StoreToTypedArray(masm, writeType, value, dest, numElems);
+        else
+            StoreToTypedArrayNative(masm, writeType, value, dest, numElems);
     }
 }
 

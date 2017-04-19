@@ -393,6 +393,10 @@ if CONFIG['INTEL_ARCHITECTURE']:
     SOURCES += ['nsTextFragmentSSE2.cpp']
     SOURCES['nsTextFragmentSSE2.cpp'].flags += CONFIG['SSE2_FLAGS']
 
+if CONFIG['TENFOURFOX_VMX']:
+    SOURCES += ['nsTextFragmentVMX.cpp']
+    SOURCES['nsTextFragmentVMX.cpp'].flags += ['-maltivec']
+
 EXTRA_COMPONENTS += [
     'ConsoleAPI.manifest',
     'ConsoleAPIStorage.js',

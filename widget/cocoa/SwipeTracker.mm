@@ -51,14 +51,18 @@ SwipeTracker::SwipeTracker(nsChildView& aWidget,
   , mEventsHaveStartedNewGesture(false)
   , mRegisteredWithRefreshDriver(false)
 {
+#if(0)
   SendSwipeEvent(eSwipeGestureStart, 0, 0.0);
   ProcessEvent(aSwipeStartEvent);
+#endif
 }
 
 void
 SwipeTracker::Destroy()
 {
+#if(0)
   UnregisterFromRefreshDriver();
+#endif
 }
 
 SwipeTracker::~SwipeTracker()
@@ -100,6 +104,7 @@ SwipeTracker::ComputeSwipeSuccess() const
 nsEventStatus
 SwipeTracker::ProcessEvent(const PanGestureInput& aEvent)
 {
+#if(0)
   // If the fingers have already been lifted, don't process this event for swiping.
   if (!mEventsAreControllingSwipe) {
     // Return nsEventStatus_eConsumeNoDefault for events from the swipe gesture
@@ -133,6 +138,7 @@ SwipeTracker::ProcessEvent(const PanGestureInput& aEvent)
     StartAnimating(targetValue);
   }
 
+#endif
   return nsEventStatus_eConsumeNoDefault;
 }
 

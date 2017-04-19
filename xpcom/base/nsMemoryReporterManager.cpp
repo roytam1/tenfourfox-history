@@ -398,7 +398,7 @@ ResidentFastDistinguishedAmount(int64_t* aN)
 
 #include <mach/mach_init.h>
 #include <mach/mach_vm.h>
-#include <mach/shared_region.h>
+//#include <mach/shared_region.h>
 #include <mach/task.h>
 #include <sys/sysctl.h>
 
@@ -473,6 +473,7 @@ InSharedRegion(mach_vm_address_t aAddr, cpu_type_t aType)
   mach_vm_address_t base;
   mach_vm_address_t size;
 
+#if(0)
   switch (aType) {
     case CPU_TYPE_ARM:
       base = SHARED_REGION_BASE_ARM;
@@ -489,6 +490,13 @@ InSharedRegion(mach_vm_address_t aAddr, cpu_type_t aType)
     default:
       return false;
   }
+#else
+  // Screw you with a rusty razorblade sideways, Mozilla!
+  // Assume PowerPC. Constants hardcoded since 10.4 lacks them publicly.
+  // We are not 64-bit, so we don't need that.
+  base = 0x90000000ULL;
+  size = 0x20000000ULL;
+#endif
 
   return base <= aAddr && aAddr < (base + size);
 }
@@ -531,8 +539,11 @@ ResidentUniqueDistinguishedAmount(int64_t* aN)
     }
 
     switch (info.share_mode) {
+#if(0)
+// This is irrelevant to 10.4 because ...
       case SM_LARGE_PAGE:
         // NB: Large pages are not shareable and always resident.
+#endif
       case SM_PRIVATE:
         privatePages += info.private_pages_resident;
         privatePages += info.shared_pages_resident;

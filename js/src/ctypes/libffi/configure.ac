@@ -53,7 +53,7 @@ if test "$ax_cv_c_compiler_vendor" != "sun"; then
 fi
 
 if test "x$GCC" = "xyes"; then
-  CFLAGS="$CFLAGS -fexceptions"
+#  CFLAGS="$CFLAGS -fexceptions" # This is a bummer.
 fi
 
 cat > local.exp <<EOF
@@ -500,7 +500,7 @@ if test "x$GCC" = "xyes"; then
       libffi_cv_ro_eh_frame, [
   	libffi_cv_ro_eh_frame=no
   	echo 'extern void foo (void); void bar (void) { foo (); foo (); }' > conftest.c
-  	if $CC $CFLAGS -c -fpic -fexceptions -o conftest.o conftest.c > /dev/null 2>&1; then
+  	if $CC $CFLAGS -c -fpic -o conftest.o conftest.c > /dev/null 2>&1; then
 	    objdump -h conftest.o > conftest.dump 2>&1
 	    libffi_eh_frame_line=`grep -n eh_frame conftest.dump | cut -d: -f 1`
 	    libffi_test_line=`expr $libffi_eh_frame_line + 1`p

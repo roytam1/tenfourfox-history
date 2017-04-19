@@ -19,6 +19,7 @@
 // some/all of the Macs in Mozilla's build system.  For the time being (until
 // this problem is resolved), we refer directly to what we need from it,
 // rather than including it here.
+#if(0)
 extern "C" int sandbox_init(const char *profile, uint64_t flags, char **errorbuf);
 extern "C" void sandbox_free_error(char *errorbuf);
 
@@ -121,9 +122,12 @@ OSXVersion::GetVersionNumber()
   }
   return mOSXVersion;
 }
+#endif
 
 namespace mozilla {
 
+// Let's not take space up in the binary with this crap.
+#if(0)
 static const char pluginSandboxRules[] =
   "(version 1)\n"
   "(deny default)\n"
@@ -423,9 +427,16 @@ static const char contentSandboxRules[] =
   "        (home-subpath \"/Library/Caches/TemporaryItems\"))\n"
   "  )\n"
   ")\n";
+#endif
 
 bool StartMacSandbox(MacSandboxInfo aInfo, std::string &aErrorMessage)
 {
+char *msg = NULL;
+asprintf(&msg, "Sandbox not supported on PowerPC");
+if (msg) { aErrorMessage.assign(msg); free(msg); }
+return false;
+
+#if(0)
   char *profile = NULL;
   if (aInfo.type == MacSandboxType_Plugin) {
     if (OSXVersion::OnLionOrLater()) {
@@ -485,6 +496,7 @@ bool StartMacSandbox(MacSandboxInfo aInfo, std::string &aErrorMessage)
   }
 
   return true;
+#endif
 }
 
 } // namespace mozilla

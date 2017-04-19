@@ -9,6 +9,9 @@
 #include "Logging.h"
 #include "PathHelpers.h"
 
+// CGContextCopyPath has existed since 10.2, but was not public until 10.6.
+extern "C" CGPathRef CGContextCopyPath(CGContextRef cg);
+
 namespace mozilla {
 namespace gfx {
 

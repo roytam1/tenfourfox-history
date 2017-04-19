@@ -110,6 +110,31 @@ void vp8_short_idct4x4llm_c(short *input, unsigned char *pred_ptr,
     }
 }
 
+void vp8_short_idct4x4llm_1_c(short *input, unsigned char *pred_ptr,
+                            int pred_stride, unsigned char *dst_ptr,
+                            int dst_stride)
+{
+    int r, c;
+    for (r = 0; r < 4; r++)
+    {
+        for (c = 0; c < 4; c++)
+        {
+            int a = input[c] + pred_ptr[c] ;
+        
+            if (a < 0)
+                a = 0;
+        
+            if (a > 255)
+                a = 255;
+        
+            dst_ptr[c] = (unsigned char) a ;
+        }
+        input += 4;
+        dst_ptr += dst_stride;
+        pred_ptr += pred_stride;
+    }   
+}
+
 void vp8_dc_only_idct_add_c(short input_dc, unsigned char *pred_ptr,
                             int pred_stride, unsigned char *dst_ptr,
                             int dst_stride)

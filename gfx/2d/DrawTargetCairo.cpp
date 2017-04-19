@@ -202,7 +202,7 @@ void
 ReleaseData(void* aData)
 {
   DataSourceSurface *data = static_cast<DataSourceSurface*>(aData);
-  data->Unmap();
+  //data->Unmap(); // See backout of bug 1035168 below.
   data->Release();
 }
 
@@ -374,20 +374,27 @@ GetCairoSurfaceForSourceSurface(SourceSurface *aSurface,
     return nullptr;
   }
 
+// Backout bug 1035168. For some reason this doesn't map properly for us, and
+// we don't actually need the hack. ("Assertion failure: mIsMapped" when
+// printing complex pages; text-only pages don't seem to trigger this.)
+
+#if(0)
   DataSourceSurface::MappedSurface map;
   if (!data->Map(DataSourceSurface::READ, &map)) {
     return nullptr;
   }
+#endif
 
   cairo_surface_t* surf =
-    CreateSubImageForData(map.mData, subimage,
-                          map.mStride, data->GetFormat());
+    CreateSubImageForData(data->GetData(), subimage, // map.mData, subimage,
+                          data->Stride(), data->GetFormat()); // map.mStride, data->GetFormat());
 
   // In certain scenarios, requesting larger than 8k image fails.  Bug 803568
   // covers the details of how to run into it, but the full detailed
   // investigation hasn't been done to determine the underlying cause.  We
   // will just handle the failure to allocate the surface to avoid a crash.
   if (!surf || cairo_surface_status(surf)) {
+#if(0)
     if (surf && (cairo_surface_status(surf) == CAIRO_STATUS_INVALID_STRIDE)) {
       // If we failed because of an invalid stride then copy into
       // a new surface with a stride that cairo chooses. No need to
@@ -402,8 +409,10 @@ GetCairoSurfaceForSourceSurface(SourceSurface *aSurface,
       return result;
     }
     data->Unmap();
+#endif
     return nullptr;
   }
+// End backout
 
   cairo_surface_set_user_data(surf,
                               &surfaceDataKey,

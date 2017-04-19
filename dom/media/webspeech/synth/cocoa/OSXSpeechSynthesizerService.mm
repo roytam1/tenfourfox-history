@@ -4,6 +4,9 @@
  * License, v. 2.0. If a copy of the MPL was not distributed with this
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
+// Fix glitch in MozPromise.h on .mm files with C++11 lambdas.
+#define GCC_SUCKS_MOOSE_WANG
+
 #include "nsISupports.h"
 #include "nsServiceManagerUtils.h"
 #include "nsObjCExceptions.h"
@@ -78,7 +81,9 @@ SpeechTaskCallback::OnPause()
 {
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK_NSRESULT;
 
-  [mSpeechSynthesizer pauseSpeakingAtBoundary:NSSpeechImmediateBoundary];
+  //[mSpeechSynthesizer pauseSpeakingAtBoundary:NSSpeechImmediateBoundary];
+NS_WARNING("mSpeechSynthesizer Pause/Resume not supported in 10.4");
+return NS_ERROR_FAILURE;
   if (!mTask) {
     // When calling pause() on child porcess, it may not receive end event
     // from chrome process yet.
@@ -95,7 +100,9 @@ SpeechTaskCallback::OnResume()
 {
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK_NSRESULT;
 
-  [mSpeechSynthesizer continueSpeaking];
+  //[mSpeechSynthesizer continueSpeaking];
+NS_WARNING("mSpeechSynthesizer Pause/Resume not supported in 10.4");
+return NS_ERROR_FAILURE;
   if (!mTask) {
     // When calling resume() on child porcess, it may not receive end event
     // from chrome process yet.
@@ -112,8 +119,12 @@ SpeechTaskCallback::OnVolumeChanged(float aVolume)
 {
   NS_OBJC_BEGIN_TRY_ABORT_BLOCK_NSRESULT;
 
+#if(0)
   [mSpeechSynthesizer setObject:[NSNumber numberWithFloat:aVolume]
                     forProperty:NSSpeechVolumeProperty error:nil];
+#else
+NS_WARNING("mSpeechSynthesizer Volume control not supported in 10.4");
+#endif
   return NS_OK;
 
   NS_OBJC_END_TRY_ABORT_BLOCK_NSRESULT;
@@ -154,7 +165,7 @@ SpeechTaskCallback::OnDidFinishSpeaking()
   mTask = nullptr;
 }
 
-@interface SpeechDelegate : NSObject<NSSpeechSynthesizerDelegate>
+@interface SpeechDelegate : NSObject // <NSSpeechSynthesizerDelegate>
 {
 @private
   SpeechTaskCallback* mCallback;
@@ -280,7 +291,13 @@ EnumVoicesRunnable::Run()
   NSArray* voices = [NSSpeechSynthesizer availableVoices];
   NSString* defaultVoice = [NSSpeechSynthesizer defaultVoice];
 
+#if(0)
   for (NSString* voice in voices) {
+#else
+  int i;
+  for (i=0; i<[voices count]; i++) {
+    NSString *voice = [voices objectAtIndex:i];
+#endif
     OSXVoice item;
 
     NSDictionary* attr = [NSSpeechSynthesizer attributesForVoice:voice];
@@ -291,9 +308,14 @@ EnumVoicesRunnable::Run()
 
     nsCocoaUtils::GetStringForNSString([attr objectForKey:NSVoiceName], item.mName);
 
+#if(0)
     nsCocoaUtils::GetStringForNSString(
       [attr objectForKey:NSVoiceLocaleIdentifier], item.mLocale);
     item.mLocale.ReplaceChar('_', '-');
+#else
+    // XXX: Set this based on the TenFourFox hardcoded locale.
+    item.mLocale.AssignLiteral("en-us");
+#endif
 
     item.mUri.AssignLiteral("urn:moz-tts:osx:");
     item.mUri.Append(identifier);
@@ -373,6 +395,8 @@ OSXSpeechSynthesizerService::Speak(const nsAString& aText,
   NSString* identifier = nsCocoaUtils::ToNSString(Substring(aUri, 16));
   [synth setVoice:identifier];
 
+// 10.4 does not support this.
+#if(0)
   // default rate is 180-220
   [synth setObject:[NSNumber numberWithInt:aRate * 200]
          forProperty:NSSpeechRateProperty error:nil];
@@ -387,6 +411,7 @@ OSXSpeechSynthesizerService::Speak(const nsAString& aText,
     [synth setObject:[NSNumber numberWithInt:newPitch]
            forProperty:NSSpeechPitchBaseProperty error:nil];
   }
+#endif
 
   RefPtr<SpeechTaskCallback> callback = new SpeechTaskCallback(aTask, synth);
   nsresult rv = aTask->Setup(callback, 0, 0, 0);

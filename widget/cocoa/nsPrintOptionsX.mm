@@ -9,6 +9,11 @@
 #include "nsPrintOptionsX.h"
 #include "nsPrintSettingsX.h"
 
+// 10.4 is missing these. They don't seem to be used, but here they are.
+#define NSPrintSelectionOnly @"NSPrintSelectionOnly"
+#define NSPrintJobSavingURL @"NSJobSavingURL"
+#define NSPrintJobSavingFileNameExtensionHidden @"NSJobSavingFileNameExtensionHidden"
+
 using namespace mozilla::embedding;
 
 nsPrintOptionsX::nsPrintOptionsX()
@@ -73,11 +78,14 @@ nsPrintOptionsX::SerializeToPrintData(nsIPrintSettings* aSettings,
     nsCocoaUtils::GetStringForNSString(faxNumber, data->faxNumber());
   }
 
+#if(0)
+// Not on 10.4
   NSURL* printToFileURL = [dict objectForKey: NSPrintJobSavingURL];
   if (printToFileURL) {
     nsCocoaUtils::GetStringForNSString([printToFileURL absoluteString],
                                        data->toFileName());
   }
+#endif
 
   NSDate* printTime = [dict objectForKey: NSPrintTime];
   if (printTime) {
@@ -101,9 +109,23 @@ nsPrintOptionsX::SerializeToPrintData(nsIPrintSettings* aSettings,
   data->detailedErrorReporting() = [[dict objectForKey: NSPrintDetailedErrorReporting] boolValue];
   data->addHeaderAndFooter() = [[dict objectForKey: NSPrintHeaderAndFooter] boolValue];
   data->fileNameExtensionHidden() =
+#if(0)
     [[dict objectForKey: NSPrintJobSavingFileNameExtensionHidden] boolValue];
+#else
+    // It's debatable this has any value, but just in case,
+    [dict objectForKey: NSPrintJobSavingFileNameExtensionHidden] ?
+    [[dict objectForKey: NSPrintJobSavingFileNameExtensionHidden] boolValue] :
+    false;
+#endif
 
+#if(0)
   bool printSelectionOnly = [[dict objectForKey: NSPrintSelectionOnly] boolValue];
+#else
+  bool printSelectionOnly = // In a like, similarly purposeless fashion
+  [dict objectForKey: NSPrintSelectionOnly] ?
+  [[dict objectForKey: NSPrintSelectionOnly] boolValue] :
+  false;
+#endif
   aSettings->SetPrintOptions(nsIPrintSettings::kEnableSelectionRB,
                              printSelectionOnly);
   aSettings->GetPrintOptionsBits(&data->optionFlags());
@@ -195,11 +217,13 @@ nsPrintOptionsX::DeserializeToPrintSettings(const PrintData& data,
                       forKey: NSPrintSelectionOnly];
   }
 
+#if(0)
   NSURL* jobSavingURL =
     [NSURL URLWithString: nsCocoaUtils::ToNSString(data.toFileName())];
   if (jobSavingURL) {
     [newPrintInfoDict setObject: jobSavingURL forKey: NSPrintJobSavingURL];
   }
+#endif
 
   NSTimeInterval timestamp = data.printTime();
   NSDate* printTime = [NSDate dateWithTimeIntervalSinceReferenceDate: timestamp];

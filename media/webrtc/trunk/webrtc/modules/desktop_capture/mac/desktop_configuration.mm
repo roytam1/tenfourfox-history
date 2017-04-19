@@ -16,6 +16,9 @@
 
 #include "webrtc/system_wrappers/interface/logging.h"
 
+typedef float CGFloat;
+typedef uint32_t NSUInteger;
+
 #if !defined(MAC_OS_X_VERSION_10_7) || \
     MAC_OS_X_VERSION_MAX_ALLOWED < MAC_OS_X_VERSION_10_7
 
@@ -62,7 +65,7 @@ MacDisplayConfiguration GetConfigurationForScreen(NSScreen* screen) {
 
   // Fetch the NSScreenNumber, which is also the CGDirectDisplayID.
   NSDictionary* device_description = [screen deviceDescription];
-  display_config.id = static_cast<CGDirectDisplayID>(
+  display_config.id = (CGDirectDisplayID)( //static_cast<CGDirectDisplayID>(
       [[device_description objectForKey:@"NSScreenNumber"] intValue]);
 
   // Determine the display's logical & physical dimensions.

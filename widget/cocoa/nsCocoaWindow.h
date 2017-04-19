@@ -82,7 +82,10 @@ typedef struct _nsCocoaWindowList {
   // descendants to use.
   float mDPI;
 
+// 10.4 doesn't have NSTrackingArea.
+#if(0)
   NSTrackingArea* mTrackingArea;
+#endif
 
   NSRect mDirtyRect;
 
@@ -204,6 +207,14 @@ typedef struct _nsCocoaWindowList {
 - (void)sendToplevelDeactivateEvents;
 @end
 
+// backout bug 678091
+struct UnifiedGradientInfo {
+  float titlebarHeight;
+  float toolbarHeight;
+  BOOL windowIsMain;
+  BOOL drawTitlebar; // NO for toolbar, YES for titlebar
+};
+
 @class ToolbarWindow;
 
 // NSColor subclass that allows us to draw separate colors both in the titlebar 
@@ -268,6 +279,7 @@ public:
     virtual bool            IsEnabled() const override;
     NS_IMETHOD              SetModal(bool aState) override;
     NS_IMETHOD              SetFakeModal(bool aState) override;
+    virtual bool            IsRunningAppModal() override;
     virtual bool            IsVisible() const override;
     NS_IMETHOD              SetFocus(bool aState=false) override;
     virtual LayoutDeviceIntPoint WidgetToScreenOffset() override;
@@ -314,10 +326,12 @@ public:
     NS_IMETHOD              SetCursor(nsCursor aCursor) override;
     NS_IMETHOD              SetCursor(imgIContainer* aCursor, uint32_t aHotspotX, uint32_t aHotspotY) override;
 
+#if(0)
     CGFloat                 BackingScaleFactor();
     void                    BackingScaleFactorChanged();
     virtual double          GetDefaultScaleInternal() override;
     virtual int32_t         RoundsWidgetCoordinatesTo() override;
+#endif
 
     NS_IMETHOD              SetTitle(const nsAString& aTitle) override;
 
@@ -373,6 +387,8 @@ public:
                         DoCommandCallback aCallback,
                         void* aCallbackData) override;
 
+	static void UnifiedShading(void* aInfo, const CGFloat* aIn, CGFloat* aOut);
+
     void SetPopupWindowLevel();
 
     NS_IMETHOD         ReparentNativeWidget(nsIWidget* aNewParent) override;
@@ -403,8 +419,10 @@ protected:
     return widget.forget();
   }
 
+#if(0)
   virtual nsresult NotifyIMEInternal(
                      const IMENotification& aIMENotification) override;
+#endif
 
   nsIWidget*           mParent;         // if we're a popup, this is our parent [WEAK]
   nsIWidget*           mAncestorLink;   // link to traverse ancestors [WEAK]

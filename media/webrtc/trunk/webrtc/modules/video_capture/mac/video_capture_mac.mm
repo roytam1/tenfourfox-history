@@ -23,9 +23,10 @@
 
 // 10.4 support must be decided runtime. We will just decide which framework to
 // use at compile time "work" classes. One for QTKit, one for QuickTime
+// We don't support QTKit in TenFourFox, even though it exists.
 #if __MAC_OS_X_VERSION_MIN_REQUIRED == __MAC_10_4 // QuickTime version
-#include <QuickTime/video_capture_quick_time.h>
-#include <QuickTime/video_capture_quick_time_info.h>
+#include "webrtc/modules/video_capture/mac/quicktime/video_capture_quick_time.h"
+#include "webrtc/modules/video_capture/mac/quicktime/video_capture_quick_time_info.h"
 #else
 #include "webrtc/modules/video_capture/mac/qtkit/video_capture_qtkit.h"
 #include "webrtc/modules/video_capture/mac/qtkit/video_capture_qtkit_info.h"
@@ -229,7 +230,8 @@ VideoCaptureImpl::CreateDeviceInfo(const int32_t id)
 
     if (!newCaptureInfoModule || newCaptureInfoModule->Init() != 0)
     {
-        Destroy(newCaptureInfoModule);
+        //Destroy(newCaptureInfoModule);
+	delete newCaptureInfoModule;
         newCaptureInfoModule = NULL;
         WEBRTC_TRACE(webrtc::kTraceInfo, webrtc::kTraceVideoCapture, id,
                      "Failed to Init newCaptureInfoModule created with id %d "

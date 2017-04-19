@@ -177,6 +177,8 @@ PR_IMPLEMENT(PRStatus) PR_GetSystemInfo(PRSysInfo cmd, char *buf, PRUint32 bufle
 */
 PR_IMPLEMENT(PRInt32) PR_GetNumberOfProcessors( void )
 {
+    return 1;
+#if(0)
     PRInt32     numCpus;
 #if defined(WIN32)
     SYSTEM_INFO     info;
@@ -251,6 +253,7 @@ PR_IMPLEMENT(PRInt32) PR_GetNumberOfProcessors( void )
 #error "An implementation is required"
 #endif
     return(numCpus);
+#endif
 } /* end PR_GetNumberOfProcessors() */
 
 /*

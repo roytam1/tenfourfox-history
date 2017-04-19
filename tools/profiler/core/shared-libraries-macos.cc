@@ -5,7 +5,9 @@
 
 #include <AvailabilityMacros.h>
 #include <mach-o/loader.h>
+/*
 #include <mach-o/dyld_images.h>
+*/
 #include <mach/task_info.h>
 #include <mach/task.h>
 #include <mach/mach_init.h>
@@ -98,6 +100,7 @@ void addSharedLibrary(const platform_mach_header* header, char *name, SharedLibr
 SharedLibraryInfo SharedLibraryInfo::GetInfoForSelf()
 {
   SharedLibraryInfo sharedLibraryInfo;
+#if(0)
 
   task_dyld_info_data_t task_dyld_info;
   mach_msg_type_number_t count = TASK_DYLD_INFO_COUNT;
@@ -128,5 +131,9 @@ SharedLibraryInfo SharedLibraryInfo::GetInfoForSelf()
 
   }
   return sharedLibraryInfo;
+#else
+  // this doesn't work in 10.4
+  return sharedLibraryInfo;
+#endif
 }
 

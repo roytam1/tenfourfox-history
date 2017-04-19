@@ -50,6 +50,10 @@ UNIFIED_SOURCES += [
     'nsSubstringTuple.cpp',
 ]
 
+if CONFIG['TENFOURFOX_VMX']:
+    SOURCES += ['nsUTF8UtilsVMX.cpp']
+    SOURCES['nsUTF8UtilsVMX.cpp'].flags += ['-faltivec']
+
 # Are we targeting x86 or x86-64?  If so, compile the SSE2 functions for
 # nsUTF8Utils.cpp.
 if CONFIG['INTEL_ARCHITECTURE']:

@@ -75,7 +75,7 @@ struct AString {
     bool startsWith(const char *prefix) const;
     bool endsWith(const char *suffix) const;
 
-    void tolower();
+    /* void tolower(); shut up gcc */
 
 private:
     static const char *kEmptyString;

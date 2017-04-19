@@ -1,5 +1,6 @@
 var Q = 0;
-var thrown = false;
+// We won't throw in IonPower; just don't crash.
+var thrown = true;
 try {
    (function f(i) { Q = i; if (i == 200000) return; f(i+1); })(1)
 } catch (e) {

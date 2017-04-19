@@ -89,7 +89,7 @@ if '86' in CONFIG['OS_TEST']:
     if CONFIG['GNU_CC']:
         use_mmx = True
 elif 'ppc' in CONFIG['OS_TEST']:
-    if CONFIG['GNU_CC']:
+    if CONFIG['TENFOURFOX_VMX']:
         use_vmx = True
 # Apple's arm assembler doesn't support the same syntax as
 # the standard GNU assembler, so use the C fallback paths for now.

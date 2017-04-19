@@ -30,13 +30,16 @@
 <!ENTITY community.exp.creditsLink  "global community">
 <!ENTITY community.exp.end          " working together to keep the Web open, public and accessible to all.">
 
-<!ENTITY community.start2           "&brandShortName; is designed by ">
+<!ENTITY community.start2           " is free software sponsored by ">
 <!-- LOCALIZATION NOTE (community.mozillaLink): This is a link title that links to http://www.mozilla.org/. -->
-<!ENTITY community.mozillaLink      "&vendorShortName;">
-<!ENTITY community.middle2          ", a ">
+<!ENTITY community.mozillaLink      "Floodgap Systems">
+<!ENTITY community.middle2          ".">
 <!-- LOCALIZATION NOTE (community.creditsLink): This is a link title that links to about:credits. -->
-<!ENTITY community.creditsLink      "global community">
+<!ENTITY community.creditsLink      "Mozilla Community Credits">
 <!ENTITY community.end3             " working together to keep the Web open, public and accessible to all.">
+
+<!ENTITY contribute.start           "Project lead: Cameron Kaiser. Thanks to: Tobias Netzel, Ben Stuhl, Claudio Leite, Chris Trusch, David Kilbridge, David Fang, Chad Weider, Theo Waddell, Narcotix, PoLiYa, Edwin Smith and all our localizers. Powered by Mozilla Firefox: ">
+<!ENTITY contribute.end             "">
 
 <!ENTITY helpus.start               "Want to help? ">
 <!-- LOCALIZATION NOTE (helpus.donateLink): This is a link title that links to https://sendto.mozilla.org/page/contribute/Give-Now?source=mozillaorg_default_footer&ref=firefox_about&utm_campaign=firefox_about&utm_source=firefox&utm_medium=referral&utm_content=20140929_FireFoxAbout. -->
@@ -46,6 +49,8 @@
 <!ENTITY helpus.getInvolvedLink     "get involved!">
 <!ENTITY helpus.end                 "">
 
+<!ENTITY copyright.blurb            "Copyright © 2010-2017 Contributors to TenFourFox. All rights reserved.">
+
 <!-- LOCALIZATION NOTE (bottomLinks.license): This is a link title that links to about:license. -->
 <!ENTITY bottomLinks.license        "Licensing Information">
 
@@ -53,7 +58,7 @@
 <!ENTITY bottomLinks.rights         "End-User Rights">
 
 <!-- LOCALIZATION NOTE (bottomLinks.privacy): This is a link title that links to https://www.mozilla.org/legal/privacy/. -->
-<!ENTITY bottomLinks.privacy        "Privacy Policy">
+<!ENTITY bottomLinks.privacy        "Mozilla Privacy Policy">
 
 <!-- LOCALIZATION NOTE (update.checkingForUpdates): try to make the localized text short (see bug 596813 for screenshots). -->
 <!ENTITY update.checkingForUpdates  "Checking for updates…">

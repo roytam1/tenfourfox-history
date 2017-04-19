@@ -20,14 +20,14 @@
     <menuitem id="menu_HelpPopup_reportPhishingtoolmenu"
               label="&reportPhishSiteMenu.title2;"
               accesskey="&reportPhishSiteMenu.accesskey;"
-              insertbefore="aboutSeparator"
+              insertbefore="updateSeparator"
               observes="reportPhishingBroadcaster"
               oncommand="openUILink(gSafeBrowsing.getReportURL('Phish'), event);"
               onclick="checkForMiddleClick(this, event);"/>
     <menuitem id="menu_HelpPopup_reportPhishingErrortoolmenu"
               label="&safeb.palm.notforgery.label2;"
               accesskey="&reportPhishSiteMenu.accesskey;"
-              insertbefore="aboutSeparator"
+              insertbefore="updateSeparator"
               observes="reportPhishingErrorBroadcaster"
               oncommand="openUILinkIn(gSafeBrowsing.getReportURL('PhishMistake'), 'tab');"
               onclick="checkForMiddleClick(this, event);"/>

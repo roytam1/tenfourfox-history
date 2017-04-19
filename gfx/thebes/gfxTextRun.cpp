@@ -2069,6 +2069,11 @@ gfxFontGroup::MakeTextRun(const uint8_t *aString, uint32_t aLength,
     if (aLength == 0) {
         return MakeEmptyTextRun(aParams, aFlags);
     }
+#if(0)
+fprintf(stderr, "(L)%i: \"", aLength);uint32_t i;for(i=0;i<aLength;i++) {
+fprintf(stderr, "%c", (char)(aString[i] & 255)); }fprintf(stderr,"\" "); for(i=0;i<aLength;i++) {
+fprintf(stderr, "%02x ", (uint8_t)(aString[i])); }fprintf(stderr,"\n");
+#endif
     if (aLength == 1 && aString[0] == ' ') {
         return MakeSpaceTextRun(aParams, aFlags);
     }
@@ -2104,6 +2109,11 @@ gfxFontGroup::MakeTextRun(const char16_t *aString, uint32_t aLength,
     if (aLength == 0) {
         return MakeEmptyTextRun(aParams, aFlags);
     }
+#if(0)
+fprintf(stderr, "(U)%i: \"", aLength);uint32_t i;for(i=0;i<aLength;i++) {
+fprintf(stderr, "%c", (char)(aString[i] & 255)); }fprintf(stderr,"\" "); for(i=0;i<aLength;i++) {
+fprintf(stderr, "%04x ", (uint16_t)(aString[i])); }fprintf(stderr,"\n");
+#endif
     if (aLength == 1 && aString[0] == ' ') {
         return MakeSpaceTextRun(aParams, aFlags);
     }
@@ -2830,11 +2840,6 @@ gfxFontGroup::FindFontForChar(uint32_t aCh, uint32_t aPrevCh, uint32_t aNextCh,
         *aMatchType = gfxTextRange::kSystemFallback;
         RefPtr<gfxFont> ret = aPrevMatchedFont;
         return ret.forget();
-    }
-
-    // never fall back for characters from unknown scripts
-    if (aRunScript == HB_SCRIPT_UNKNOWN) {
-        return nullptr;
     }
 
     // for known "space" characters, don't do a full system-fallback search;

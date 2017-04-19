@@ -5,6 +5,7 @@
 
 #ifndef GFX_MACIOSURFACEIMAGE_H
 #define GFX_MACIOSURFACEIMAGE_H
+#if(0)
 
 #include "ImageContainer.h"
 #include "mozilla/gfx/MacIOSurface.h"
@@ -45,3 +46,4 @@ private:
 } // namespace mozilla
 
 #endif // GFX_SHAREDTEXTUREIMAGE_H
+#endif

@@ -9,6 +9,10 @@
 #include "nsTArrayForwardDeclare.h"
 #include "gfxPlatform.h"
 #include "mozilla/LookAndFeel.h"
+#include "nsDataHashtable.h"
+#include "nsClassHashtable.h"
+
+typedef size_t ByteCount;
 
 namespace mozilla {
 namespace gfx {
@@ -16,6 +20,19 @@ class DrawTarget;
 class VsyncSource;
 } // namespace gfx
 } // namespace mozilla
+
+// 10.4Fx
+class FontDirWrapper {
+public:
+	uint8_t fontDir[1024];
+	ByteCount sizer;
+	FontDirWrapper::FontDirWrapper(ByteCount sized, uint8_t *dir) {
+		if (sized < 0 || sized > 1024) return;
+		sizer = sized;
+		memcpy(fontDir, dir, sizer);
+	}
+	FontDirWrapper::~FontDirWrapper() { }
+};
 
 class gfxPlatformMac : public gfxPlatform {
 public:
@@ -98,6 +115,12 @@ public:
     // lower threshold on font anti-aliasing
     uint32_t GetAntiAliasingThreshold() { return mFontAntiAliasingThreshold; }
 
+/* ATS acceleration functions for 10.4 */
+ByteCount GetCachedDirSizeForFont(nsString name);
+uint8_t *GetCachedDirForFont(nsString name);
+void SetCachedDirForFont(nsString name, uint8_t* table, ByteCount sizer);
+nsClassHashtable< nsStringHashKey, FontDirWrapper > PlatformFontDirCache;
+
 protected:
     bool AccelerateLayersByDefault() override;
 
@@ -108,6 +131,8 @@ private:
     static uint32_t ReadAntiAliasingThreshold();
 
     uint32_t mFontAntiAliasingThreshold;
+    
+    int32_t mOSXVersion; // 10.4
 };
 
 #endif /* GFX_PLATFORM_MAC_H */

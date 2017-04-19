@@ -17,6 +17,8 @@
 namespace webrtc {
 
 bool GetWindowList(WindowCapturer::WindowList* windows) {
+return false;
+#if(0)
   // Only get on screen, non-desktop windows.
   CFArrayRef window_array = CGWindowListCopyWindowInfo(
       kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
@@ -57,6 +59,7 @@ bool GetWindowList(WindowCapturer::WindowList* windows) {
 
   CFRelease(window_array);
   return true;
+#endif
 }
 
 }  // namespace webrtc

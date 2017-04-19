@@ -2488,8 +2488,8 @@ test -n "$target_alias" &&
   program_prefix=${target_alias}-
 
 MOD_MAJOR_VERSION=4
-MOD_MINOR_VERSION=12
-MOD_PATCH_VERSION=0
+MOD_MINOR_VERSION=13
+MOD_PATCH_VERSION=1
 NSPR_MODNAME=nspr20
 _HAVE_PTHREADS=
 USE_PTHREADS=
@@ -6542,7 +6542,7 @@ fi
             ;;
     esac
     if test "`echo $CC | grep -c '\-arch '`" = "0"; then
-        CC="$CC -arch $CPU_ARCH"
+        CC="$CC"
     fi
     ac_fn_c_check_header_mongrel "$LINENO" "crt_externs.h" "ac_cv_header_crt_externs_h" "$ac_includes_default"
 if test "x$ac_cv_header_crt_externs_h" = xyes; then :

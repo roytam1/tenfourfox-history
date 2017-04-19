@@ -20,7 +20,8 @@
 
 typedef int32_t Atomic32;
 
-#if defined(V8_HOST_ARCH_X64) || defined(V8_HOST_ARCH_IA32) || defined(V8_HOST_ARCH_ARM)
+/* This is probably bogus, but we don't support the Profiler anyway. */
+#if(1)
 inline void NoBarrier_Store(volatile Atomic32* ptr, Atomic32 value) {
   *ptr = value;
 }

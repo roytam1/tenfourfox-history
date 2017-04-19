@@ -26,6 +26,9 @@
 #include "webrtc/system_wrappers/interface/logging.h"
 #include "webrtc/system_wrappers/interface/scoped_refptr.h"
 
+typedef uint32_t CGWindowID;
+#define kCGNullWindowID -1
+
 namespace webrtc {
 
 class MouseCursorMonitorMac : public MouseCursorMonitor {
@@ -117,6 +120,7 @@ void MouseCursorMonitorMac::Capture() {
       break;
     }
   }
+#if(0)
   // If we are capturing cursor for a specific window then we need to figure out
   // if the current mouse position is covered by another window and also adjust
   // |position| to make it relative to the window origin.
@@ -197,6 +201,9 @@ void MouseCursorMonitorMac::Capture() {
       state = OUTSIDE;
       position.set(-1, -1);
     }
+#else
+  if(0) {
+#endif
   } else {
     assert(screen_id_ >= kFullDesktopScreenId);
     if (screen_id_ != kFullDesktopScreenId) {
@@ -204,7 +211,8 @@ void MouseCursorMonitorMac::Capture() {
       // target screen.
       const MacDisplayConfiguration* config =
           configuration.FindDisplayConfigurationById(
-              static_cast<CGDirectDisplayID>(screen_id_));
+              //static_cast<CGDirectDisplayID>(screen_id_));
+		(CGDirectDisplayID)(screen_id_));
       if (config) {
         if (!config->pixel_bounds.Contains(position))
           state = OUTSIDE;
@@ -227,6 +235,7 @@ void MouseCursorMonitorMac::Capture() {
 }
 
 void MouseCursorMonitorMac::CaptureImage() {
+#if(0)
   NSCursor* nscursor = [NSCursor currentSystemCursor];
 
   NSImage* nsimage = [nscursor image];
@@ -280,6 +289,9 @@ void MouseCursorMonitorMac::CaptureImage() {
   last_cursor_.reset(MouseCursor::CopyOf(*cursor));
 
   callback_->OnMouseCursor(cursor.release());
+#else
+  return;
+#endif
 }
 
 MouseCursorMonitor* MouseCursorMonitor::CreateForWindow(

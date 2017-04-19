@@ -147,7 +147,8 @@ static const unsigned PostStorePrePopFP = 0;
 static const unsigned PushedFP = 1;
 static const unsigned StoredFP = 1;
 #else
-# error "Unknown architecture!"
+//# error "Unknown architecture!"
+#warning UP YOURS, MOZILLA!
 #endif
 
 static void
@@ -169,6 +170,7 @@ static void
 GenerateProfilingPrologue(MacroAssembler& masm, unsigned framePushed, ExitReason reason,
                           AsmJSProfilingOffsets* offsets, Label* maybeEntry = nullptr)
 {
+#if(0)
 #if !defined (JS_CODEGEN_ARM)
     Register scratch = ABIArgGenerator::NonArg_VolatileReg;
 #else
@@ -215,6 +217,7 @@ GenerateProfilingPrologue(MacroAssembler& masm, unsigned framePushed, ExitReason
 
     if (framePushed)
         masm.subFromStackPtr(Imm32(framePushed));
+#endif
 }
 
 // Generate the inverse of GenerateProfilingPrologue.
@@ -222,6 +225,7 @@ static void
 GenerateProfilingEpilogue(MacroAssembler& masm, unsigned framePushed, ExitReason reason,
                           AsmJSProfilingOffsets* offsets)
 {
+#if(0)
     Register scratch = ABIArgGenerator::NonReturn_VolatileReg0;
 #if defined(JS_CODEGEN_ARM) || defined(JS_CODEGEN_ARM64) || \
     defined(JS_CODEGEN_MIPS32) || defined(JS_CODEGEN_MIPS64)
@@ -265,6 +269,7 @@ GenerateProfilingEpilogue(MacroAssembler& masm, unsigned framePushed, ExitReason
         offsets->profilingReturn = masm.currentOffset();
         masm.ret();
     }
+#endif
 }
 
 // In profiling mode, we need to maintain fp so that we can unwind the stack at
@@ -495,6 +500,7 @@ AsmJSProfilingFrameIterator::AsmJSProfilingFrameIterator(const AsmJSActivation& 
     exitReason_(ExitReason::None),
     codeRange_(nullptr)
 {
+#if(0)
     // If profiling hasn't been enabled for this module, then CallerFPFromFP
     // will be trash, so ignore the entire activation. In practice, this only
     // happens if profiling is enabled while module->active() (in this case,
@@ -602,6 +608,7 @@ AsmJSProfilingFrameIterator::AsmJSProfilingFrameIterator(const AsmJSActivation& 
     codeRange_ = codeRange;
     stackAddress_ = state.sp;
     MOZ_ASSERT(!done());
+#endif
 }
 
 void

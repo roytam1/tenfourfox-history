@@ -70,7 +70,7 @@
 #  define SPS_OS_windows 1
 
 #else
-#  error "Unsupported platform"
+#  warning "Unsupported platform"
 #endif
 
 #endif /* ndef SPS_PLATFORM_MACROS_H */

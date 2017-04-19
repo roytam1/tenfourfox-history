@@ -10,6 +10,8 @@
 
 #include "nsBaseScreen.h"
 
+typedef float CGFloat;
+
 class nsScreenCocoa : public nsBaseScreen
 {
 public:

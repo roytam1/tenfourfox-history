@@ -1174,6 +1174,8 @@ GenerateAsyncInterruptExit(MacroAssembler& masm, AsmJSModule& module, Label* thr
     MOZ_CRASH();
 #elif defined (JS_CODEGEN_NONE)
     MOZ_CRASH();
+#elif defined(JS_CODEGEN_PPC_OSX)
+    MOZ_CRASH();
 #else
 # error "Unknown architecture!"
 #endif

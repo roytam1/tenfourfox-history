@@ -4,6 +4,10 @@ try {
 } catch (e) {
 }
 
+// Due to our stack armour, exact number irrelevant to IonPower.
+// Just don't crash.
+quit();
+
 if (Q == 100000)
    assertEq(Q, "fail");
 

@@ -369,6 +369,7 @@ static vpx_codec_err_t init_decoder(vpx_codec_alg_priv_t *ctx) {
   ctx->frame_cache_write = 0;
   ctx->num_cache_frames = 0;
   ctx->need_resync = 1;
+  ctx->skip_loop_filter = 1; // It just isn't necessary.
   ctx->num_frame_workers =
       (ctx->frame_parallel_decode == 1) ? ctx->cfg.threads: 1;
   if (ctx->num_frame_workers > MAX_DECODE_THREADS)

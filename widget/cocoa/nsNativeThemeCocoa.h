@@ -20,6 +20,8 @@
 class nsDeviceContext;
 struct SegmentedControlRenderSettings;
 
+typedef float CGFloat; // sigh
+
 namespace mozilla {
 class EventStates;
 } // namespace mozilla
@@ -106,6 +108,8 @@ protected:
                  mozilla::EventStates inState);
   void DrawMeter(CGContextRef context, const HIRect& inBoxRect,
                  nsIFrame* aFrame);
+  void DrawTab(CGContextRef context, HIRect inBoxRect, mozilla::EventStates inState,
+               nsIFrame* aFrame);
   void DrawSegment(CGContextRef cgContext, const HIRect& inBoxRect,
                    mozilla::EventStates inState, nsIFrame* aFrame,
                    const SegmentedControlRenderSettings& aSettings);

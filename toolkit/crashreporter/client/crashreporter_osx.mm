@@ -8,7 +8,8 @@
 #include "crashreporter.h"
 #include "crashreporter_osx.h"
 #include <crt_externs.h>
-#include <spawn.h>
+// #include <spawn.h> // we don't have this on 10.4. wtf, Mozilla? 
+// are you guys obsessed with spawn? not getting out much? slow office parties?
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <fcntl.h>
@@ -29,6 +30,10 @@ static string gSendURL;
 static vector<string> gRestartArgs;
 static bool gDidTrySend = false;
 static bool gRTLlayout = false;
+
+typedef int cpu_type_t; // we don't have cpu_type* on 10.4.
+#define CPU_TYPE_ANY            ((cpu_type_t) -1)
+#define CPU_TYPE_POWERPC        ((cpu_type_t) 18)
 
 static cpu_type_t pref_cpu_types[2] = {
 #if defined(__i386__)
@@ -51,6 +56,31 @@ static NSString* Str(const char* aName)
 
 static bool RestartApplication()
 {
+#if(1)
+/* Use the 3.6 code. -- Cameron */
+  char** argv = reinterpret_cast<char**>(
+    malloc(sizeof(char*) * (gRestartArgs.size() + 1)));
+
+  if (!argv) return false;
+
+  unsigned int i;
+  for (i = 0; i < gRestartArgs.size(); i++) {
+    argv[i] = (char*)gRestartArgs[i].c_str();
+  }
+  argv[i] = 0;
+
+  pid_t pid = fork();
+  if (pid == -1)
+    return false;
+  else if (pid == 0) {
+    (void)execv(argv[0], argv);
+    _exit(1);
+  }
+
+  free(argv);
+
+  return true;
+#else
   vector<char*> argv(gRestartArgs.size() + 1);
 
   posix_spawnattr_t spawnattr;
@@ -90,6 +120,7 @@ static bool RestartApplication()
   posix_spawnattr_destroy(&spawnattr);
 
   return result == 0;
+#endif
 }
 
 @implementation CrashReporterUI

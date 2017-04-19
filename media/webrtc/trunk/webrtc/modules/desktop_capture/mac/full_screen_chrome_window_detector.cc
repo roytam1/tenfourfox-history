@@ -11,7 +11,10 @@
 #include "webrtc/modules/desktop_capture/mac/full_screen_chrome_window_detector.h"
 
 #include <assert.h>
+#if(0)
+// Not in 10.4
 #include <libproc.h>
+#endif
 #include <string>
 
 #include "webrtc/base/macutils.h"
@@ -28,6 +31,7 @@ const int64_t kUpdateIntervalMs = 500;
 
 // Returns true if the window is minimized.
 bool IsWindowMinimized(CGWindowID id) {
+#if(0)
   CFArrayRef window_id_array =
       CFArrayCreate(NULL, reinterpret_cast<const void **>(&id), 1, NULL);
   CFArrayRef window_array =
@@ -47,11 +51,14 @@ bool IsWindowMinimized(CGWindowID id) {
   CFRelease(window_array);
 
   return minimized;
+#endif
+  return true;
 }
 
 // Returns true if the window is occupying a full screen.
 bool IsWindowFullScreen(const MacDesktopConfiguration& desktop_config,
                         CFDictionaryRef window) {
+#if(0)
   bool fullscreen = false;
 
   CFDictionaryRef bounds_ref = reinterpret_cast<CFDictionaryRef>(
@@ -74,9 +81,12 @@ bool IsWindowFullScreen(const MacDesktopConfiguration& desktop_config,
   }
 
   return fullscreen;
+#endif
+  return false;
 }
 
 std::string GetWindowTitle(CGWindowID id) {
+#if(0)
   CFArrayRef window_id_array =
       CFArrayCreate(NULL, reinterpret_cast<const void **>(&id), 1, NULL);
   CFArrayRef window_array =
@@ -96,9 +106,12 @@ std::string GetWindowTitle(CGWindowID id) {
   CFRelease(window_array);
 
   return title;
+#endif
+  return nullptr;
 }
 
 int GetWindowOwnerPid(CGWindowID id) {
+#if(0)
   CFArrayRef window_id_array =
       CFArrayCreate(NULL, reinterpret_cast<const void **>(&id), 1, NULL);
   CFArrayRef window_array =
@@ -118,11 +131,14 @@ int GetWindowOwnerPid(CGWindowID id) {
   CFRelease(window_array);
 
   return pid;
+#endif
+  return 1;
 }
 
 // Returns the window that is full-screen and has the same title and owner pid
 // as the input window.
 CGWindowID FindFullScreenWindowWithSamePidAndTitle(CGWindowID id) {
+#if(0)
   int pid = GetWindowOwnerPid(id);
   std::string title = GetWindowTitle(id);
 
@@ -175,9 +191,12 @@ CGWindowID FindFullScreenWindowWithSamePidAndTitle(CGWindowID id) {
 
   CFRelease(window_array);
   return full_screen_window;
+#endif
+  return kCGNullWindowID;
 }
 
 bool IsChromeWindow(CGWindowID id) {
+#if(0)
   int pid = GetWindowOwnerPid(id);
   char buffer[PROC_PIDPATHINFO_MAXSIZE];
   int path_length = proc_pidpath(pid, buffer, sizeof(buffer));
@@ -187,6 +206,9 @@ bool IsChromeWindow(CGWindowID id) {
   const char* last_slash = strrchr(buffer, '/');
   std::string name(last_slash ? last_slash + 1 : buffer);
   return name.find("Google Chrome") == 0 || name == "Chromium";
+#endif
+  // WTF. We don't support a sh*tty browser like Chrome.
+  return false;
 }
 
 }  // namespace
@@ -198,6 +220,7 @@ FullScreenChromeWindowDetector::~FullScreenChromeWindowDetector() {}
 
 CGWindowID FullScreenChromeWindowDetector::FindFullScreenWindow(
     CGWindowID original_window) {
+#if(0)
   if (!IsChromeWindow(original_window) || !IsWindowMinimized(original_window))
     return kCGNullWindowID;
 
@@ -220,10 +243,13 @@ CGWindowID FullScreenChromeWindowDetector::FindFullScreenWindow(
   }
 
   return full_screen_window_id;
+#endif
+  return kCGNullWindowID;
 }
 
 void FullScreenChromeWindowDetector::UpdateWindowListIfNeeded(
     CGWindowID original_window) {
+#if(0)
   if (IsChromeWindow(original_window) &&
       (TickTime::Now() - last_udpate_time_).Milliseconds()
           > kUpdateIntervalMs) {
@@ -239,6 +265,7 @@ void FullScreenChromeWindowDetector::UpdateWindowListIfNeeded(
     GetWindowList(&current_window_list_);
     last_udpate_time_ = TickTime::Now();
   }
+#endif
 }
 
 }  // namespace webrtc

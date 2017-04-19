@@ -697,6 +697,9 @@ GetAddrInfoOperator::GetAddrInfoOperator(nsIDNSServiceInfo* aServiceInfo,
 nsresult
 GetAddrInfoOperator::Start()
 {
+NS_WARNING("MDNSResponderOperator not supported on 10.4");
+return NS_ERROR_FAILURE; // narf
+#if(0)
   nsresult rv;
   if (NS_WARN_IF(NS_FAILED(rv = MDNSResponderOperator::Start()))) {
     return rv;
@@ -725,6 +728,7 @@ GetAddrInfoOperator::Start()
   }
 
   return ResetService(service);
+#endif
 }
 
 void

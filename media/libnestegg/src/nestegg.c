@@ -8,6 +8,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <stdio.h>
+
 #include "halloc.h"
 #include "nestegg/nestegg.h"
 
@@ -2376,6 +2378,7 @@ nestegg_track_audio_params(nestegg * ctx, unsigned int track,
 {
   struct track_entry * entry;
   uint64_t value;
+int r;
 
   memset(params, 0, sizeof(*params));
 
@@ -2387,7 +2390,13 @@ nestegg_track_audio_params(nestegg * ctx, unsigned int track,
     return -1;
 
   params->rate = 8000;
+r =
   ne_get_float(entry->audio.sampling_frequency, &params->rate);
+if (!r && params->rate == 0.0) {
+fprintf(stderr,
+"TenFourFox: libnestegg: Unexpected zero sampling rate; set to 22.050kHz.\n");
+params->rate = 22050.0;
+}
 
   value = 1;
   ne_get_uint(entry->audio.channels, &value);

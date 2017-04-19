@@ -78,6 +78,28 @@ NSPR_API(PRInt32)	PR_AtomicAdd(PRInt32 *ptr, PRInt32 val);
 **    the macros and functions won't be compatible and can't be used
 **    interchangeably.
 */
+#if(1)
+/* Optimized atomics for TenFourFox (issue 193, 205, et al) */
+#ifdef __i386__
+/* Use native atomics and our own set routine. NSS doesn't like us
+   including libkern's headers, so we just declare it extern. */
+#define PR_ATOMIC_ADD(p,v) OSAtomicAdd32(v,p)
+extern PRInt32 OSAtomicAdd32(PRInt32 v, PRInt32 *p);
+#else
+/* This is in os_Darwin.s */
+#define PR_ATOMIC_ADD(p,v) TenFourFoxAtomicAdd(p,v)
+extern PRInt32 TenFourFoxAtomicAdd(PRInt32 *ptr, PRInt32 value);
+#endif
+/* Increment and Decrement are just implemented in terms of Add. */
+#define PR_ATOMIC_INCREMENT(p) PR_ATOMIC_ADD(p,1)
+#define PR_ATOMIC_DECREMENT(p) PR_ATOMIC_ADD(p,-1)
+
+/* This is in os_Darwin.s */
+#define PR_ATOMIC_SET(p,v) TenFourFoxAtomicSet(p,v)
+extern PRInt32 TenFourFoxAtomicSet(PRInt32 *ptr, PRInt32 value);
+
+#else
+
 #if defined(_WIN32) && !defined(_WIN32_WCE) && \
     (!defined(_MSC_VER) || (_MSC_VER >= 1310))
 
@@ -128,6 +150,8 @@ NSPR_API(PRInt32)	PR_AtomicAdd(PRInt32 *ptr, PRInt32 val);
 #define PR_ATOMIC_DECREMENT(val) PR_AtomicDecrement(val)
 #define PR_ATOMIC_SET(val, newval) PR_AtomicSet(val, newval)
 #define PR_ATOMIC_ADD(ptr, val) PR_AtomicAdd(ptr, val)
+
+#endif
 
 #endif
 

@@ -782,6 +782,7 @@ CanvasDrawObserver::DidDrawCall(DrawCallType aType)
 bool
 CanvasDrawObserver::FrameEnd()
 {
+#if(0)
   mFramesRendered++;
 
   // We log the first mMinFramesBeforeDecision frames of any
@@ -806,6 +807,8 @@ CanvasDrawObserver::FrameEnd()
     return true;
   }
   return false;
+#endif
+  return true; // always software, no point in executing this
 }
 
 class CanvasRenderingContext2DUserData : public LayerUserData {
@@ -946,7 +949,8 @@ DrawTarget* CanvasRenderingContext2D::sErrorTarget = nullptr;
 
 
 CanvasRenderingContext2D::CanvasRenderingContext2D()
-  : mRenderingMode(RenderingMode::OpenGLBackendMode)
+  //: mRenderingMode(RenderingMode::OpenGLBackendMode)
+  : mRenderingMode(RenderingMode::SoftwareBackendMode)
 #ifdef USE_SKIA_GPU
   , mVideoTexture(0)
 #endif
@@ -965,6 +969,7 @@ CanvasRenderingContext2D::CanvasRenderingContext2D()
 {
   sNumLivingContexts++;
 
+#if(0)
   // The default is to use OpenGL mode
   if (!gfxPlatform::GetPlatform()->UseAcceleratedSkiaCanvas()) {
     mRenderingMode = RenderingMode::SoftwareBackendMode;
@@ -973,6 +978,7 @@ CanvasRenderingContext2D::CanvasRenderingContext2D()
   if (gfxPlatform::GetPlatform()->HaveChoiceOfHWAndSWCanvas()) {
     mDrawObserver = new CanvasDrawObserver(this);
   }
+#endif
 }
 
 CanvasRenderingContext2D::~CanvasRenderingContext2D()
@@ -1413,6 +1419,7 @@ CanvasRenderingContext2D::EnsureTarget(RenderingMode aRenderingMode)
     }
 
     if (layerManager) {
+#if(0) // always false
       if (mode == RenderingMode::OpenGLBackendMode &&
           gfxPlatform::GetPlatform()->UseAcceleratedSkiaCanvas() &&
           CheckSizeForSkiaGL(size)) {
@@ -1435,6 +1442,7 @@ CanvasRenderingContext2D::EnsureTarget(RenderingMode aRenderingMode)
         }
 #endif
       }
+#endif
 
       if (!mBufferProvider) {
         mBufferProvider = layerManager->CreatePersistentBufferProvider(size, format);
@@ -1643,6 +1651,7 @@ CanvasRenderingContext2D::SetContextOptions(JSContext* aCx,
     return NS_ERROR_UNEXPECTED;
   }
 
+#if(0) // no point
   if (Preferences::GetBool("gfx.canvas.willReadFrequently.enable", false)) {
     // Use software when there is going to be a lot of readback
     if (attributes.mWillReadFrequently) {
@@ -1653,6 +1662,7 @@ CanvasRenderingContext2D::SetContextOptions(JSContext* aCx,
       mRenderingMode = RenderingMode::SoftwareBackendMode;
     }
   }
+#endif
 
   if (!attributes.mAlpha) {
     SetIsOpaque(true);
@@ -5549,6 +5559,7 @@ static uint8_t g2DContextLayerUserData;
 uint32_t
 CanvasRenderingContext2D::SkiaGLTex() const
 {
+return 0; // should not happen??
   if (!mTarget) {
     return 0;
   }

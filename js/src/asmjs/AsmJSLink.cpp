@@ -54,6 +54,8 @@ using namespace js::wasm;
 using mozilla::IsNaN;
 using mozilla::PodZero;
 
+#if(0) // bug 881882
+
 static bool
 CloneModule(JSContext* cx, MutableHandle<AsmJSModuleObject*> moduleObj)
 {
@@ -1233,15 +1235,55 @@ js::IsAsmJSFunction(JSContext* cx, unsigned argc, Value* vp)
     return true;
 }
 
+#else
+
+JSFunction *
+js::NewAsmJSModuleFunction(ExclusiveContext *cx, JSFunction *origFun, HandleObject moduleObj)
+{
+    return nullptr;
+}
+bool
+js::IsAsmJSModuleNative(js::Native native)
+{
+    return false;
+}
+bool
+js::IsAsmJSModule(JSContext *cx, unsigned argc, Value *vp)
+{
+    CallArgs args = CallArgsFromVp(argc, vp);
+    args.rval().set(BooleanValue(false));
+    return true;
+}
+bool
+js::IsAsmJSModuleLoadedFromCache(JSContext *cx, unsigned argc, Value *vp)
+{
+    CallArgs args = CallArgsFromVp(argc, vp);
+    args.rval().set(BooleanValue(false));
+    return true;
+}
+bool
+js::IsAsmJSFunction(JSContext *cx, unsigned argc, Value *vp)
+{
+    CallArgs args = CallArgsFromVp(argc, vp);
+    args.rval().set(BooleanValue(false));
+    return true;
+}
+#endif // JS_ASMJS
+
 bool
 js::IsAsmJSFunction(HandleFunction fun)
 {
+#if(0)
     return fun->isNative() && fun->maybeNative() == CallAsmJS;
+#else
+	return false;
+#endif
 }
 
 JSString*
 js::AsmJSFunctionToString(JSContext* cx, HandleFunction fun)
 {
+#if(0)
     AsmJSModule& module = FunctionToEnclosingModule(fun);
     const AsmJSModule::ExportedFunction& f = FunctionToExportedFunction(fun, module);
     uint32_t begin = module.srcStart() + f.startOffsetInModule();
@@ -1293,4 +1335,7 @@ js::AsmJSFunctionToString(JSContext* cx, HandleFunction fun)
     }
 
     return out.finishString();
+#else
+    return nullptr;
+#endif
 }

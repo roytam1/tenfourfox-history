@@ -41,6 +41,8 @@
  * Otherwise statically choose the AltiVec path in case the compiler
  * was told to build with AltiVec support.
  */
+#if(0)
+// TenFourFox uses a different method.
 #if (defined(__POWERPC__) || defined(__powerpc__))
 #if defined(__linux__)
 #include <unistd.h>
@@ -111,6 +113,16 @@ static inline qcms_bool have_altivec() {
 #define have_altivec() false
 #endif
 #endif // (defined(__POWERPC__) || defined(__powerpc__))
+
+#else
+// Our method is determined at build-time.
+#ifdef TENFOURFOX_VMX
+#warning qcms VMX support enabled
+#define have_altivec() true
+#else
+#define have_altivec() false
+#endif
+#endif
 
 // Build a White point, primary chromas transfer matrix from RGB to CIE XYZ
 // This is just an approximation, I am not handling all the non-linear
@@ -1296,7 +1308,7 @@ qcms_transform* qcms_transform_create(
 #endif
 		    } else
 #endif
-#if (defined(__POWERPC__) || defined(__powerpc__))
+#ifdef TENFOURFOX_VMX
 		    if (have_altivec()) {
 			    if (in_type == QCMS_DATA_RGB_8)
 				    transform->transform_fn = qcms_transform_data_rgb_out_lut_altivec;

@@ -1526,7 +1526,9 @@ class LSafepoint : public TempObject
 
 #ifdef DEBUG
     bool hasNunboxPayload(LAllocation payload) const {
-        if (payload.isMemory() && hasValueSlot(payload.isStackSlot(), payload.memorySlot()))
+return true; // XXX
+        // Dammit, we're big endian!
+        if (payload.isMemory() && hasValueSlot(payload.isStackSlot(), payload.memorySlot() + NUNBOX32_PAYLOAD_OFFSET))
             return true;
         for (size_t i = 0; i < nunboxParts_.length(); i++) {
             if (nunboxParts_[i].payload == payload)
@@ -1832,6 +1834,8 @@ LAllocation::toRegister() const
 #  include "jit/mips64/LIR-mips64.h"
 # endif
 # include "jit/mips-shared/LIR-mips-shared.h"
+#elif defined(JS_CODEGEN_PPC_OSX)
+# include "jit/osxppc/LIR-ppc.h"
 #elif defined(JS_CODEGEN_NONE)
 # include "jit/none/LIR-none.h"
 #else

@@ -177,6 +177,7 @@ static void quartz_ensure_symbols(void)
     CGContextSetAllowsFontSmoothingPtr = dlsym(RTLD_DEFAULT, "CGContextSetAllowsFontSmoothing");
     CGContextGetAlphaPtr = dlsym(RTLD_DEFAULT, "CGContextGetAlpha");
 
+#if(0)
     CTFontDrawGlyphsPtr = dlsym(RTLD_DEFAULT, "CTFontDrawGlyphs");
 
 #if !TARGET_OS_IPHONE
@@ -187,6 +188,9 @@ static void quartz_ensure_symbols(void)
 #else
     //TODO: this is not great
     _cairo_quartz_osx_version = 0x1050;
+#endif
+#else
+     _cairo_quartz_osx_version = 0x1040; // so awesome
 #endif
 
     _cairo_quartz_symbol_lookup_done = TRUE;

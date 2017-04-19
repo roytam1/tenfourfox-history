@@ -12,7 +12,9 @@
 
 #include "nscore.h"
 #include "mozilla/Assertions.h"
+#if MOZILLA_MAY_SUPPORT_SSE2
 #include "mozilla/SSE.h"
+#endif
 
 #include "nsCharTraits.h"
 
@@ -655,6 +657,9 @@ public:
       write_sse2(aSource, aSourceLength);
       return;
     }
+#elif defined (TENFOURFOX_VMX)
+          write_vmx(aSource, aSourceLength);
+          return;
 #endif
     const char* done_writing = aSource + aSourceLength;
     while (aSource < done_writing) {
@@ -662,8 +667,15 @@ public:
     }
   }
 
+#ifdef MOZILLA_MAY_SUPPORT_SSE2
   void
   write_sse2(const char* aSource, uint32_t aSourceLength);
+#endif
+
+#ifdef TENFOURFOX_VMX
+      void
+      write_vmx( const char* aSource, uint32_t aSourceLength );
+#endif
 
   void
   write_terminator()
@@ -699,6 +711,9 @@ public:
       write_sse2(aSource, aSourceLength);
       return;
     }
+#elif defined (TENFOURFOX_VMX)
+          write_vmx(aSource, aSourceLength);
+          return;
 #endif
     const char16_t* done_writing = aSource + aSourceLength;
     while (aSource < done_writing) {
@@ -709,6 +724,11 @@ public:
 #ifdef MOZILLA_MAY_SUPPORT_SSE2
   void
   write_sse2(const char16_t* aSource, uint32_t aSourceLength);
+#endif
+
+#ifdef TENFOURFOX_VMX
+      void
+      write_vmx( const char16_t* aSource, uint32_t aSourceLength );
 #endif
 
   void

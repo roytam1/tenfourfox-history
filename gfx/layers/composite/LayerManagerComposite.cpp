@@ -333,6 +333,11 @@ LayerManagerComposite::UpdateAndRender()
 {
   nsIntRegion invalid;
 
+  // bug 1248822
+  nsIntRegion opaque;
+  LayerIntRegion visible;
+  PostProcessLayers(mRoot, opaque, visible);
+
   if (mClonedLayerTreeProperties) {
     // We need to compute layer tree differences even if we're not going to
     // immediately use the resulting damage area, since ComputeDifferences
@@ -381,10 +386,6 @@ LayerManagerComposite::UpdateAndRender()
   // The results of our drawing always go directly into a pixel buffer,
   // so we don't need to pass any global transform here.
   mRoot->ComputeEffectiveTransforms(gfx::Matrix4x4());
-
-  nsIntRegion opaque;
-  LayerIntRegion visible;
-  PostProcessLayers(mRoot, opaque, visible);
 
   Render(invalid);
 #if defined(MOZ_WIDGET_ANDROID) || defined(MOZ_WIDGET_GONK)
@@ -1191,9 +1192,13 @@ LayerManagerComposite::ComputeRenderIntegrity()
 {
   // We only ever have incomplete rendering when progressive tiles are enabled.
   Layer* root = GetRoot();
+#if(0) // always false
   if (!gfxPlatform::GetPlatform()->UseProgressivePaint() || !root) {
     return 1.f;
   }
+#else
+  if (MOZ_UNLIKELY(!root)) return 1.f;
+#endif
 
   FrameMetrics rootMetrics = LayerMetricsWrapper::TopmostScrollableMetrics(root);
   if (!rootMetrics.IsScrollable()) {

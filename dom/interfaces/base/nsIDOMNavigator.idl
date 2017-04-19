@@ -23,4 +23,5 @@ interface nsIDOMNavigator : nsISupports
   readonly attribute DOMString             userAgent;
   readonly attribute DOMString             buildID;
   readonly attribute DOMString             doNotTrack;
+  readonly attribute DOMString             isTenFourFox;
 };

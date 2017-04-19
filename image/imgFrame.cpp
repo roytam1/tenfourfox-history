@@ -257,10 +257,12 @@ imgFrame::InitWithDrawable(gfxDrawable* aDrawable,
 
   RefPtr<DrawTarget> target;
 
+#if(0) // always true
   bool canUseDataSurface =
     gfxPlatform::GetPlatform()->CanRenderContentToDataSurface();
 
   if (canUseDataSurface) {
+#endif
     // It's safe to use data surfaces for content on this platform, so we can
     // get away with using volatile buffers.
     MOZ_ASSERT(!mImageSurface, "Called imgFrame::InitWithDrawable() twice?");
@@ -284,6 +286,7 @@ imgFrame::InitWithDrawable(gfxDrawable* aDrawable,
 
     target = gfxPlatform::GetPlatform()->
       CreateDrawTargetForData(ptr, mSize, stride, mFormat);
+#if(0)
   } else {
     // We can't use data surfaces for content, so we'll create an offscreen
     // surface instead.  This means if someone later calls RawAccessRef(), we
@@ -294,8 +297,9 @@ imgFrame::InitWithDrawable(gfxDrawable* aDrawable,
     target = gfxPlatform::GetPlatform()->
       CreateOffscreenContentDrawTarget(mSize, mFormat);
   }
+#endif
 
-  if (!target) {
+  if (MOZ_UNLIKELY(!target)) {
     mAborted = true;
     return NS_ERROR_OUT_OF_MEMORY;
   }
@@ -307,6 +311,7 @@ imgFrame::InitWithDrawable(gfxDrawable* aDrawable,
                              ImageRegion::Create(ThebesRect(imageRect)),
                              mFormat, aFilter, aImageFlags);
 
+#if(0)
   if (canUseDataSurface && !mImageSurface) {
     NS_WARNING("Failed to create VolatileDataSourceSurface");
     mAborted = true;
@@ -318,6 +323,13 @@ imgFrame::InitWithDrawable(gfxDrawable* aDrawable,
     // imgFrame's perspective.
     mOptSurface = target->Snapshot();
   }
+#else
+  if (MOZ_UNLIKELY(!mImageSurface)) {
+    NS_WARNING("Failed to create VolatileDataSourceSurface");
+    mAborted = true;
+    return NS_ERROR_OUT_OF_MEMORY;
+  }
+#endif
 
   // If we reach this point, we should regard ourselves as complete.
   mDecoded = GetRect();
@@ -360,6 +372,14 @@ imgFrame::Optimize()
     uint32_t* imgData = (uint32_t*) ((uint8_t*) mVBufPtr);
     uint32_t firstPixel = * (uint32_t*) imgData;
     uint32_t pixelCount = mSize.width * mSize.height + 1;
+
+// TenFourFox kludge:
+// If the first pixel is black, then don't optimize (either it is all
+// black, and will hit issue 132, or it isn't, and we don't optimize
+// anyway).
+    if (!(firstPixel & 0x00ffffff)) { // assume ARGB or XRGB
+        return NS_OK;
+    }
 
     while (--pixelCount && *imgData++ == firstPixel)
       ;

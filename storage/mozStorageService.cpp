@@ -482,12 +482,20 @@ static int sqliteMemSize(void *p)
 
 static int sqliteMemRoundup(int n)
 {
+#if(0)
   n = malloc_good_size(n);
 
   // jemalloc can return blocks of size 2 and 4, but SQLite requires that all
   // allocations be 8-aligned.  So we round up sub-8 requests to 8.  This
   // wastes a small amount of memory but is obviously safe.
   return n <= 8 ? 8 : n;
+#else
+  // 10.4 has no good_size in its zones, despite having malloc_good_size.
+  // jemalloc *should* take care of this for us, but just in case, let's
+  // round this up to the nearest 16-byte boundary for AltiVec which also
+  // satisfies the above constraint.
+  return (n & 15) ? (n+16-(n&15)) : n;
+#endif
 }
 
 static int sqliteMemInit(void *p)

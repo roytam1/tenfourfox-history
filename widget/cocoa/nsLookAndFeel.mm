@@ -24,6 +24,7 @@ enum {
   mozNSScrollerStyleLegacy       = 0,
   mozNSScrollerStyleOverlay      = 1
 };
+typedef int32_t NSInteger; // sigh
 typedef NSInteger mozNSScrollerStyle;
 
 @interface NSScroller(AvailableSinceLion)
@@ -248,7 +249,7 @@ nsLookAndFeel::NativeGetColor(ColorID aID, nscolor &aColor)
       break;
     case eColorID__moz_mac_chrome_active:
     case eColorID__moz_mac_chrome_inactive: {
-      int grey = NativeGreyColorAsInt(toolbarFillGrey, (aID == eColorID__moz_mac_chrome_active));
+      int grey = NativeGreyColorAsInt(headerEndGrey, (aID == eColorID__moz_mac_chrome_active));
       aColor = NS_RGB(grey, grey, grey);
     }
       break;
@@ -346,10 +347,16 @@ nsLookAndFeel::GetIntImpl(IntID aID, int32_t &aResult)
       aResult = 4;
       break;
     case eIntID_ScrollArrowStyle:
+#if(0)
       if (nsCocoaFeatures::OnLionOrLater()) {
         // OS X Lion's scrollbars have no arrows
         aResult = eScrollArrow_None;
       } else {
+#else
+      {
+#endif
+        // This can get called during startup and can leak.
+        NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
         NSString *buttonPlacement = [[NSUserDefaults standardUserDefaults] objectForKey:@"AppleScrollBarVariant"];
         if ([buttonPlacement isEqualToString:@"Single"]) {
           aResult = eScrollArrowStyle_Single;
@@ -360,6 +367,7 @@ nsLookAndFeel::GetIntImpl(IntID aID, int32_t &aResult)
         } else {
           aResult = eScrollArrowStyle_BothAtBottom; // The default is BothAtBottom.
         }
+        [pool drain];
       }
       break;
     case eIntID_ScrollSliderStyle:
@@ -514,18 +522,30 @@ nsLookAndFeel::GetFloatImpl(FloatID aID, float &aResult)
 
 bool nsLookAndFeel::UseOverlayScrollbars()
 {
+#if(0)
   return GetInt(eIntID_UseOverlayScrollbars) != 0;
+#else
+  return false; // Unpossible before 10.7.
+#endif
 }
 
 bool nsLookAndFeel::SystemWantsOverlayScrollbars()
 {
+#if(0)
   return ([NSScroller respondsToSelector:@selector(preferredScrollerStyle)] &&
           [NSScroller preferredScrollerStyle] == mozNSScrollerStyleOverlay);
+#else
+  return false; // Unpossible before 10.7.
+#endif
 }
 
 bool nsLookAndFeel::AllowOverlayScrollbarsOverlap()
 {
+#if(0)
   return (UseOverlayScrollbars() && nsCocoaFeatures::OnMountainLionOrLater());
+#else
+  return false; // Unpossible before 10.7.
+#endif
 }
 
 bool

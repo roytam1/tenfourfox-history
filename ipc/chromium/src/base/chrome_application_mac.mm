@@ -1,3 +1,4 @@
+#if(0)
 // Copyright (c) 2009 The Chromium Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -6,14 +7,28 @@
 
 #include "base/logging.h"
 
+#if(0)
 @interface CrApplication ()
 @property(readwrite,
           getter=isHandlingSendEvent,
           nonatomic) BOOL handlingSendEvent;
+#else
+// Stubs to emulate @property in 10.4.
+@interface CrApplication : NSObject {
+	BOOL handlingSendEvent_;
+}
+- (BOOL)isHandlingSendEvent;
+#endif
 @end
 
 @implementation CrApplication
+#if(0)
 @synthesize handlingSendEvent = handlingSendEvent_;
+#else
+- (BOOL)isHandlingSendEvent {
+	return handlingSendEvent_;
+}
+#endif
 
 // Initialize NSApplication using the custom subclass.  Check whether NSApp
 // was already initialized using another class, because that would break
@@ -66,3 +81,6 @@ ScopedSendingEvent::~ScopedSendingEvent() {
 }
 
 }  // namespace chrome_application_mac
+#else
+#warning chrome_application_mac no good on 10.4
+#endif

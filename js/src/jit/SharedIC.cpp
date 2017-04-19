@@ -885,7 +885,7 @@ ICStubCompiler::emitPostWriteBarrierSlot(MacroAssembler& masm, Register obj, Val
     masm.branchValueIsNurseryObject(Assembler::NotEqual, val, scratch, &skipBarrier);
 
     // void PostWriteBarrier(JSRuntime* rt, JSObject* obj);
-#if defined(JS_CODEGEN_ARM) || defined(JS_CODEGEN_MIPS32) || defined(JS_CODEGEN_MIPS64)
+#if defined(JS_CODEGEN_ARM) || defined(JS_CODEGEN_MIPS32) || defined(JS_CODEGEN_MIPS64) || defined(JS_CODEGEN_PPC_OSX)
     saveRegs.add(ICTailCallReg);
 #endif
     saveRegs.set() = GeneralRegisterSet::Intersect(saveRegs.set(), GeneralRegisterSet::Volatile());
@@ -1190,8 +1190,16 @@ bool
 ICBinaryArith_StringConcat::Compiler::generateStubCode(MacroAssembler& masm)
 {
     Label failure;
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestString(Assembler::NotEqual, R0, &failure);
     masm.branchTestString(Assembler::NotEqual, R1, &failure);
+#else
+    masm.x_li32(r0, JSVAL_TAG_STRING);
+    masm.xor_(r12, R0.typeReg(), r0);
+    masm.xor_(r0,  R1.typeReg(), r0);
+    masm.or__rc(r0, r0, r12); // r0 == R0.typeReg() == R1.typeReg()
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     // Restore the tail call register.
     EmitRestoreTailCallReg(masm);
@@ -1270,6 +1278,7 @@ bool
 ICBinaryArith_StringObjectConcat::Compiler::generateStubCode(MacroAssembler& masm)
 {
     Label failure;
+#ifndef JS_CODEGEN_PPC_OSX
     if (lhsIsString_) {
         masm.branchTestString(Assembler::NotEqual, R0, &failure);
         masm.branchTestObject(Assembler::NotEqual, R1, &failure);
@@ -1277,6 +1286,19 @@ ICBinaryArith_StringObjectConcat::Compiler::generateStubCode(MacroAssembler& mas
         masm.branchTestObject(Assembler::NotEqual, R0, &failure);
         masm.branchTestString(Assembler::NotEqual, R1, &failure);
     }
+#else
+    if (lhsIsString_) {
+        masm.x_li32(r0, JSVAL_TAG_STRING);
+        masm.x_li32(r12, JSVAL_TAG_OBJECT);
+    } else {
+        masm.x_li32(r0, JSVAL_TAG_OBJECT);
+        masm.x_li32(r12, JSVAL_TAG_STRING);
+    }
+    masm.xor_(r0, R0.typeReg(), r0);
+    masm.xor_(r12, R1.typeReg(), r12);
+    masm.or__rc(r0, r0, r12);
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     // Restore the tail call register.
     EmitRestoreTailCallReg(masm);
@@ -1305,6 +1327,7 @@ ICBinaryArith_Double::Compiler::generateStubCode(MacroAssembler& masm)
     masm.ensureDouble(R0, FloatReg0, &failure);
     masm.ensureDouble(R1, FloatReg1, &failure);
 
+#ifndef JS_CODEGEN_PPC_OSX
     switch (op) {
       case JSOP_ADD:
         masm.addDouble(FloatReg1, FloatReg0);
@@ -1331,6 +1354,46 @@ ICBinaryArith_Double::Compiler::generateStubCode(MacroAssembler& masm)
 
     masm.boxDouble(FloatReg0, R0);
     EmitReturnFromIC(masm);
+#else
+#define LOAD_CTR() {\
+	masm.lwz(tempRegister, stackPointerRegister, 0);\
+	masm.x_mtctr(tempRegister);\
+}
+
+    // Attempt to hoist CTR loads.
+    switch (op) {
+      case JSOP_ADD:
+        LOAD_CTR();
+        masm.addDouble(FloatReg1, FloatReg0);
+        break;
+      case JSOP_SUB:
+        LOAD_CTR();
+        masm.subDouble(FloatReg1, FloatReg0);
+        break;
+      case JSOP_MUL:
+        LOAD_CTR();
+        masm.mulDouble(FloatReg1, FloatReg0);
+        break;
+      case JSOP_DIV:
+        LOAD_CTR();
+        masm.divDouble(FloatReg1, FloatReg0);
+        break;
+      case JSOP_MOD:
+        masm.setupUnalignedABICall(R0.scratchReg());
+        masm.passABIArg(FloatReg0, MoveOp::DOUBLE);
+        masm.passABIArg(FloatReg1, MoveOp::DOUBLE);
+        masm.callWithABI(JS_FUNC_TO_DATA_PTR(void*, NumberMod), MoveOp::DOUBLE);
+        MOZ_ASSERT(ReturnDoubleReg == FloatReg0);
+        LOAD_CTR();
+        break;
+      default:
+        MOZ_CRASH("Unexpected op");
+    }
+
+    masm.boxDouble(FloatReg0, R0);
+    masm.addi(stackPointerRegister, stackPointerRegister, 4);
+    masm.bctr();
+#endif
 
     // Failure case - jump to next stub
     masm.bind(&failure);
@@ -1342,6 +1405,7 @@ bool
 ICBinaryArith_BooleanWithInt32::Compiler::generateStubCode(MacroAssembler& masm)
 {
     Label failure;
+#ifndef JS_CODEGEN_PPC_OSX
     if (lhsIsBool_)
         masm.branchTestBoolean(Assembler::NotEqual, R0, &failure);
     else
@@ -1351,6 +1415,21 @@ ICBinaryArith_BooleanWithInt32::Compiler::generateStubCode(MacroAssembler& masm)
         masm.branchTestBoolean(Assembler::NotEqual, R1, &failure);
     else
         masm.branchTestInt32(Assembler::NotEqual, R1, &failure);
+#else
+    if (lhsIsBool_ && rhsIsBool_) {
+        // Save an instruction, ride a cowboy.
+        masm.x_li32(r0, JSVAL_TAG_BOOLEAN);
+        masm.xor_(r12, R0.typeReg(), r0);
+        masm.xor_(r0,  R1.typeReg(), r0);
+    } else {
+        masm.x_li32(r0, (lhsIsBool_) ? JSVAL_TAG_BOOLEAN : JSVAL_TAG_INT32);
+        masm.x_li32(r12, (rhsIsBool_) ? JSVAL_TAG_BOOLEAN : JSVAL_TAG_INT32);
+        masm.xor_(r0, R0.typeReg(), r0);
+        masm.xor_(r12, R1.typeReg(), r12);
+    }
+    masm.or__rc(r0, r0, r12);
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     Register lhsReg = lhsIsBool_ ? masm.extractBoolean(R0, ExtractTemp0)
                                  : masm.extractInt32(R0, ExtractTemp0);
@@ -1844,8 +1923,16 @@ bool
 ICCompare_String::Compiler::generateStubCode(MacroAssembler& masm)
 {
     Label failure;
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestString(Assembler::NotEqual, R0, &failure);
     masm.branchTestString(Assembler::NotEqual, R1, &failure);
+#else
+    masm.x_li32(r0, JSVAL_TAG_STRING);
+    masm.xor_(r12, R0.typeReg(), r0);
+    masm.xor_(r0,  R1.typeReg(), r0);
+    masm.or__rc(r0, r0, r12); // r0 == R0.typeReg() == R1.typeReg()
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     MOZ_ASSERT(IsEqualityOp(op));
 
@@ -1872,8 +1959,16 @@ bool
 ICCompare_Boolean::Compiler::generateStubCode(MacroAssembler& masm)
 {
     Label failure;
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestBoolean(Assembler::NotEqual, R0, &failure);
     masm.branchTestBoolean(Assembler::NotEqual, R1, &failure);
+#else
+    masm.x_li32(r0, JSVAL_TAG_BOOLEAN);
+    masm.xor_(r12, R0.typeReg(), r0);
+    masm.xor_(r0,  R1.typeReg(), r0);
+    masm.or__rc(r0, r0, r12); // r0 == R0.typeReg() == R1.typeReg()
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     Register left = masm.extractInt32(R0, ExtractTemp0);
     Register right = masm.extractInt32(R1, ExtractTemp1);
@@ -1932,8 +2027,16 @@ bool
 ICCompare_Object::Compiler::generateStubCode(MacroAssembler& masm)
 {
     Label failure;
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestObject(Assembler::NotEqual, R0, &failure);
     masm.branchTestObject(Assembler::NotEqual, R1, &failure);
+#else
+    masm.x_li32(r0, JSVAL_TAG_OBJECT);
+    masm.xor_(r12, R0.typeReg(), r0);
+    masm.xor_(r0,  R1.typeReg(), r0);
+    masm.or__rc(r0, r0, r12); // r0 == R0.typeReg() == R1.typeReg()
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     MOZ_ASSERT(IsEqualityOp(op));
 
@@ -2038,8 +2141,17 @@ ICCompare_Int32WithBoolean::Compiler::generateStubCode(MacroAssembler& masm)
         boolVal = R0;
         int32Val = R1;
     }
+#ifndef JS_CODEGEN_PPC_OSX
     masm.branchTestBoolean(Assembler::NotEqual, boolVal, &failure);
     masm.branchTestInt32(Assembler::NotEqual, int32Val, &failure);
+#else
+    masm.x_li32(r0, JSVAL_TAG_INT32);
+    masm.x_li32(r12, JSVAL_TAG_BOOLEAN);
+    masm.xor_(r0, int32Val.typeReg(), r0);
+    masm.xor_(r12, boolVal.typeReg(), r12);
+    masm.or__rc(r0, r0, r12);
+    masm.bc(Assembler::NonZero, &failure);
+#endif
 
     if (op_ == JSOP_STRICTEQ || op_ == JSOP_STRICTNE) {
         // Ints and booleans are never strictly equal, always strictly not equal.
@@ -2564,7 +2676,8 @@ TryAttachNativeGetAccessorPropStub(JSContext* cx, HandleScript script, jsbytecod
 
     bool isScripted = false;
     bool cacheableCall = IsCacheableGetPropCall(cx, obj, holder, shape, &isScripted,
-                                                isTemporarilyUnoptimizable);
+                                                isTemporarilyUnoptimizable,
+                                                isDOMProxy);
 
     // Try handling scripted getters.
     if (cacheableCall && isScripted && !isDOMProxy && engine == ICStubCompiler::Engine::Baseline) {

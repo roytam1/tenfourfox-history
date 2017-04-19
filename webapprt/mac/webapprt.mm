@@ -358,9 +358,11 @@ NSString
   NSString *binaryPath = nil;
 
   //we look for these flavors of Firefox, in this order
+/*
   NSArray* launchBinarySearchList = [NSArray arrayWithObjects: @"org.mozilla.nightly",
                                                                 @"org.mozilla.firefoxdeveloperedition",
                                                                 @"org.mozilla.firefox", nil];
+*/
 
   // If they provided a binary ID, use that.
   if (alternateBinaryID != nil && ([alternateBinaryID length] > 0)) {
@@ -371,13 +373,15 @@ NSString
   }
 
   //No override found, loop through the various flavors of firefox we have
-  for (NSString* signature in launchBinarySearchList) {
+//  for (NSString* signature in launchBinarySearchList) {
+// We only support this for TenFourFox.
+    NSString *signature = @"com.floodgap.tenfourfox";
     NSLog(@"SEARCHING for webapprt, trying: %@", signature);
     binaryPath = [[NSWorkspace sharedWorkspace] absolutePathForAppBundleWithIdentifier:signature];
     if (binaryPath && [binaryPath length] > 0) {
       return binaryPath;
     }
-  }
+//  }
 
   NSLog(@"unable to find a valid webrt path");
   @throw MakeException(@"This App requires that Firefox version 16 or above is installed.", @"Firefox 16+ has not been detected.");
@@ -388,6 +392,7 @@ NSString
 void
 ExecNewBinary(NSString* launchPath, NSDictionary* args)
 {
+#if(0)
   NSLog(@" launching webrt at path: %@\n", launchPath);
 
   NSUInteger numArgs = [args count];
@@ -408,4 +413,7 @@ ExecNewBinary(NSString* launchPath, NSDictionary* args)
 
   NSLog(@"Command line: '%@'", commandLine);
   execv([launchPath UTF8String], (char **)newargv);
+#else
+  NSLog(@"TenFourFoxBox is better than this");
+#endif
 }

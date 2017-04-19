@@ -80,10 +80,14 @@ HashValue(const Value& v, const mozilla::HashCodeScrambler& hcs)
         return v.toString()->asAtom().hash();
     if (v.isSymbol())
         return v.toSymbol()->hash();
+#if(0)
+// Remove this code (M1312001/M1330769). The exploit cannot succeed on PowerPC
+// and this code has a performance impact.
     if (v.isObject())
         return hcs.scramble(v.asRawBits());
 
     MOZ_ASSERT(v.isNull() || !v.isGCThing(), "do not reveal pointers via hash codes");
+#endif
     return v.asRawBits();
 }
 

@@ -88,6 +88,13 @@ void ConvertYCbCrToRGB32(const uint8* y_buf,
       rgb_row += 4;
     }
 
+#ifdef TENFOURFOX_VMX
+      FastConvertYUVToRGB32Row(y_ptr,
+                               u_ptr,
+                               v_ptr,
+                               rgb_row,
+                               x_width);
+#else
     if (has_sse) {
       FastConvertYUVToRGB32Row(y_ptr,
                                u_ptr,
@@ -103,6 +110,7 @@ void ConvertYCbCrToRGB32(const uint8* y_buf,
                                  x_width,
                                  x_shift);
     }
+#endif
   }
 
   // MMX used for FastConvertYUVToRGB32Row requires emms instruction.
@@ -141,6 +149,11 @@ void FilterRows_SSE2(uint8* ybuf, const uint8* y0_ptr, const uint8* y1_ptr,
                      int source_width, int source_y_fraction);
 #endif
 
+#ifdef TENFOURFOX_VMX
+void FilterRows_VMX(uint8* ybuf, const uint8* y0_ptr, const uint8* y1_ptr,
+                     int source_width, int source_y_fraction);
+#endif
+
 static inline void FilterRows(uint8* ybuf, const uint8* y0_ptr,
                               const uint8* y1_ptr, int source_width,
                               int source_y_fraction) {
@@ -156,6 +169,11 @@ static inline void FilterRows(uint8* ybuf, const uint8* y0_ptr,
     FilterRows_MMX(ybuf, y0_ptr, y1_ptr, source_width, source_y_fraction);
     return;
   }
+#endif
+
+#ifdef TENFOURFOX_VMX
+  FilterRows_VMX(ybuf, y0_ptr, y1_ptr, source_width, source_y_fraction);
+  return;
 #endif
 
   FilterRows_C(ybuf, y0_ptr, y1_ptr, source_width, source_y_fraction);

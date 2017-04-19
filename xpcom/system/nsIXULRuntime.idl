@@ -154,4 +154,7 @@ interface nsIXULRuntime : nsISupports
    * True if this is an official build (MOZILLA_OFFICIAL).
    */
   readonly attribute boolean isOfficial;
+
+  // TenFourFox-specific build information.
+  readonly attribute AUTF8String buildInfoTenFourFox;
 };

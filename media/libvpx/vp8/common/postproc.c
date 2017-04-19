@@ -818,6 +818,7 @@ int vp8_post_proc_frame(VP8_COMMON *oci, YV12_BUFFER_CONFIG *dest, vp8_ppflags_t
     }
     oci->postproc_state.last_frame_valid = 1;
 
+#if(0)
     if (flags & VP8D_ADDNOISE)
     {
         if (oci->postproc_state.last_q != q
@@ -835,6 +836,7 @@ int vp8_post_proc_frame(VP8_COMMON *oci, YV12_BUFFER_CONFIG *dest, vp8_ppflags_t
          oci->post_proc_buffer.y_width, oci->post_proc_buffer.y_height,
          oci->post_proc_buffer.y_stride);
     }
+#endif
 
 #if CONFIG_POSTPROC_VISUALIZER
     if (flags & VP8D_DEBUG_TXT_FRAME_INFO)

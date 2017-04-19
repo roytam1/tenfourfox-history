@@ -621,6 +621,7 @@ GLenum
 WebGLContext::CheckedBufferData(GLenum target, GLsizeiptr size,
                                 const GLvoid* data, GLenum usage)
 {
+#if(0)
 #ifdef XP_MACOSX
     // bug 790879
     if (gl->WorkAroundDriverBugs() &&
@@ -630,6 +631,7 @@ WebGLContext::CheckedBufferData(GLenum target, GLsizeiptr size,
                         " a Mac bug", size);
         return LOCAL_GL_INVALID_VALUE;
     }
+#endif
 #endif
 
     WebGLRefPtr<WebGLBuffer>& bufferSlot = GetBufferSlotByTarget(target);

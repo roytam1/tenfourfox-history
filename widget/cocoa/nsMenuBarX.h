@@ -14,6 +14,7 @@
 #include "nsINativeMenuService.h"
 #include "nsAutoPtr.h"
 #include "nsString.h"
+#include "nsCocoaUtils.h"
 
 class nsMenuX;
 class nsMenuBarX;

@@ -73,9 +73,11 @@ DisableFontActivation()
 
 gfxPlatformMac::gfxPlatformMac()
 {
+    if (nsCocoaFeatures::OnSnowLeopardOrLater()) // backout bug 850408
     DisableFontActivation();
     mFontAntiAliasingThreshold = ReadAntiAliasingThreshold();
 
+#if(0)
     uint32_t canvasMask = BackendTypeBit(BackendType::CAIRO) |
                           BackendTypeBit(BackendType::SKIA) |
                           BackendTypeBit(BackendType::COREGRAPHICS);
@@ -83,6 +85,13 @@ gfxPlatformMac::gfxPlatformMac()
                            BackendTypeBit(BackendType::SKIA);
     InitBackendPrefs(canvasMask, BackendType::COREGRAPHICS,
                      contentMask, BackendType::COREGRAPHICS);
+#else
+    uint32_t canvasMask = BackendTypeBit(BackendType::CAIRO) |
+                          BackendTypeBit(BackendType::COREGRAPHICS);
+    uint32_t contentMask = canvasMask;
+    InitBackendPrefs(canvasMask, BackendType::COREGRAPHICS,
+                     contentMask, BackendType::COREGRAPHICS);
+#endif
 
     // XXX: Bug 1036682 - we run out of fds on Mac when using tiled layers because
     // with 256x256 tiles we can easily hit the soft limit of 800 when using double
@@ -96,13 +105,43 @@ gfxPlatformMac::gfxPlatformMac()
         }
     }
 
+#if(0)
     MacIOSurfaceLib::LoadLibrary();
+#endif
 }
 
 gfxPlatformMac::~gfxPlatformMac()
 {
+#if(0)
     gfxCoreTextShaper::Shutdown();
+#endif
 }
+
+ByteCount
+gfxPlatformMac::GetCachedDirSizeForFont(nsString name)
+{
+	FontDirWrapper *x = PlatformFontDirCache.Get(name);
+	if (x) return x->sizer;
+	return 0;
+}
+uint8_t*
+gfxPlatformMac::GetCachedDirForFont(nsString name)
+{
+	FontDirWrapper *x = PlatformFontDirCache.Get(name);
+	if (x)
+		return x->fontDir;
+	else
+		return nullptr;
+}
+void
+gfxPlatformMac::SetCachedDirForFont(nsString name, uint8_t* table, ByteCount sizer)
+{
+	if (sizer < 0 || sizer > 1024) return;
+
+	FontDirWrapper *k = new FontDirWrapper(sizer, table);
+	PlatformFontDirCache.Put(name, k);
+}
+
 
 gfxPlatformFontList*
 gfxPlatformMac::CreatePlatformFontList()
@@ -188,9 +227,69 @@ gfxPlatformMac::IsFontFormatSupported(nsIURI *aFontURI, uint32_t aFormatFlags)
     NS_ASSERTION(!(aFormatFlags & gfxUserFontSet::FLAG_FORMAT_NOT_USED),
                  "strange font format hint set");
 
+    // TenFourFox issue 261. Prevent loading certain known bad font URIs.
+    nsCString spec;
+    nsresult rv = aFontURI->GetAsciiSpec(spec);
+#if DEBUG
+    if (NS_SUCCEEDED(rv))
+	fprintf(stderr, "Font blacklist checking: %s\n", spec.get());
+#endif
+    if (NS_FAILED(rv) ||
+	spec.Equals("https://cdn-static-1.medium.com/_/fp/fonts/charter-nonlatin.b-nw7PXlIqmGHGmHvkDiTw.woff") ||
+	spec.Equals("http://typeface.nytimes.com/fonts/nyt-cheltenham-200-normal.woff") ||
+	spec.Equals("https://typeface.nyt.com/fonts/nyt-cheltenham-200-normal.woff") ||
+	spec.Equals("http://typeface.nytimes.com/fonts/nyt-cheltenham-300-normal.woff") ||
+	spec.Equals("https://typeface.nyt.com/fonts/nyt-cheltenham-300-normal.woff") ||
+	spec.Equals("http://fonts.gstatic.com/ea/notosansjapanese/v6/NotoSansJP-Regular.woff") ||
+	spec.Equals("http://fonts.gstatic.com/ea/notosansjapanese/v6/NotoSansJP-Bold.woff") ||
+	spec.Equals("http://fonts.gstatic.com/ea/notosansjapanese/v6/NotoSansJP-Regular.otf") ||
+	spec.Equals("http://fonts.gstatic.com/ea/notosansjapanese/v6/NotoSansJP-Bold.otf") ||
+	spec.Equals("https://www.icloud.com/fonts/SFNSText-Light.woff") ||
+	spec.Equals("https://www.icloud.com/fonts/SFNSText-Medium.woff") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_bold.woff") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_bold.ttf") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_medium.woff") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_medium.ttf") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_semibold.woff") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_semibold.ttf") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_regular.woff") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_regular.ttf") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_light.woff") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_light.ttf") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_medium.woff") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_medium.ttf") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_regular.woff") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_regular.ttf") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_light.woff") ||
+	spec.Equals("https://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_light.ttf") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_bold.woff") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_bold.ttf") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_medium.woff") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_medium.ttf") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_semibold.woff") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_semibold.ttf") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_regular.woff") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_regular.ttf") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_light.woff") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Text/v1/sf-pro-text_light.ttf") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_medium.woff") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_medium.ttf") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_regular.woff") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_regular.ttf") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_light.woff") ||
+	spec.Equals("http://www.apple.com/wss/fonts/SF-Pro-Display/v1/sf-pro-display_light.ttf") ||
+	0) {
+	if (NS_SUCCEEDED(rv)) // Don't print if we couldn't get the URL.
+	fprintf(stderr,
+"Warning: TenFourFox blocking ATSUI-incompatible webfont %s.\n", spec.get());
+	return false;
+    }
+
     // accept supported formats
     if (aFormatFlags & (gfxUserFontSet::FLAG_FORMATS_COMMON |
-                        gfxUserFontSet::FLAG_FORMAT_TRUETYPE_AAT)) {
+                        //gfxUserFontSet::FLAG_FORMAT_TRUETYPE_AAT)) {
+                        // No AAT in TenFourFox!
+                        0)) {
         return true;
     }
 
@@ -429,28 +528,37 @@ gfxPlatformMac::ReadAntiAliasingThreshold()
 bool
 gfxPlatformMac::UseAcceleratedSkiaCanvas()
 {
+return false;
+#if(0)
   // Lion or later is required
   // Bug 1249659 - Lion has some gfx issues so disabled on lion and earlier
   return nsCocoaFeatures::OnMountainLionOrLater() && gfxPlatform::UseAcceleratedSkiaCanvas();
+#endif
 }
 
 bool
 gfxPlatformMac::UseProgressivePaint()
 {
+return false;
+#if(0)
   // Progressive painting requires cross-process mutexes, which don't work so
   // well on OS X 10.6 so we disable there.
   return nsCocoaFeatures::OnLionOrLater() && gfxPlatform::UseProgressivePaint();
+#endif
 }
 
 bool
 gfxPlatformMac::AccelerateLayersByDefault()
 {
+return false;
+#if(0)
   // 10.6.2 and lower have a bug involving textures and pixel buffer objects
   // that caused bug 629016, so we don't allow OpenGL-accelerated layers on
   // those versions of the OS.
   // This will still let full-screen video be accelerated on OpenGL, because
   // that XUL widget opts in to acceleration, but that's probably OK.
   return nsCocoaFeatures::AccelerateByDefault();
+#endif
 }
 
 // This is the renderer output callback function, called on the vsync thread
@@ -661,6 +769,7 @@ gfxPlatformMac::GetPlatformCMSOutputProfile(void* &mem, size_t &size)
     mem = nullptr;
     size = 0;
 
+#if(0)
     CGColorSpaceRef cspace = ::CGDisplayCopyColorSpace(::CGMainDisplayID());
     if (!cspace) {
         cspace = ::CGColorSpaceCreateDeviceRGB();
@@ -690,4 +799,86 @@ gfxPlatformMac::GetPlatformCMSOutputProfile(void* &mem, size_t &size)
     }
 
     ::CFRelease(iccp);
+#else
+    // 10.4 lacks ::CGColorSpaceCopyICCProfile, so we need an equivalent.
+    CMProfileRef cmProfile;
+    CMProfileLocation *location;
+    UInt32 locationSize;
+
+    CGDirectDisplayID displayID = CGMainDisplayID();
+    CMError err = CMGetProfileByAVID((CMDisplayIDType)displayID, &cmProfile);
+    if (err != noErr)
+		return;
+
+    // get the size of location
+    err = NCMGetProfileLocation(cmProfile, nullptr, &locationSize);
+    if (err != noErr)
+        return;
+        
+    // allocate enough room for location
+    location = static_cast<CMProfileLocation*>(malloc(locationSize));
+    if (!location) {
+    	CMCloseProfile(cmProfile);
+    	return;
+    }
+    err = NCMGetProfileLocation(cmProfile, location, &locationSize);
+    if (err != noErr) {
+    	free(location);
+    	CMCloseProfile(cmProfile);
+    	return;
+    }
+    
+    char path[512];
+    bool path_ok = false;
+    size_t rsize = 0;
+
+    switch (location->locType) {
+    case cmFileBasedProfile: {
+    	// We need to support this, particularly on 10.4 which has Classic.
+        FSRef fsRef;
+        if (!FSpMakeFSRef(&location->u.fileLoc.spec, &fsRef)) {
+            if (!FSRefMakePath(&fsRef, reinterpret_cast<UInt8*>(path), sizeof(path))) {
+				path_ok = true;
+			}
+		}
+		break;
+	}
+	case cmPathBasedProfile: {
+		path_ok = true;
+		break;
+	}
+	default:
+		NS_WARNING("Unsupported ColorSync profile location not supported");
+		break;
+	}
+	
+	
+    if (path_ok) {
+#ifdef DEBUG
+	fprintf(stderr, "Loading ColorSync profile: %s\n",
+		(location->locType == cmPathBasedProfile) ?
+			location->u.pathLoc.path : path);
+#endif
+	rsize = qcms_size_of_data(
+		(location->locType == cmPathBasedProfile) ?
+			location->u.pathLoc.path : path);
+#ifdef DEBUG
+	fprintf(stderr, "Size of profile: %i\n", rsize);
+#endif
+    	if (rsize) {
+       		mem = malloc(rsize);
+		qcms_data_from_path(
+		(location->locType == cmPathBasedProfile) ?
+			location->u.pathLoc.path : path, &mem, &size);
+#ifdef DEBUG
+		if (size != rsize)
+			fprintf(stderr, "Odd: size %i != rsize %i\n",
+				size, rsize);
+#endif
+    	}
+    }
+    free(location);
+    CMCloseProfile(cmProfile);
+    return;
+#endif
 }

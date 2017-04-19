@@ -35,7 +35,8 @@ extern PRLogModuleInfo* sCocoaLog;
 
 extern void EnsureLogInitialized();
 
-extern NSPasteboard* globalDragPboard;
+// restore bug 966986
+extern NSPasteboardWrapper* globalDragPboard;
 extern NSView* gLastDragView;
 extern NSEvent* gLastDragMouseDownEvent;
 extern bool gUserCancelledDrag;
@@ -48,7 +49,50 @@ NSString* const kWildcardPboardType = @"MozillaWildcard";
 NSString* const kCorePboardType_url  = @"CorePasteboardFlavorType 0x75726C20"; // 'url '  url
 NSString* const kCorePboardType_urld = @"CorePasteboardFlavorType 0x75726C64"; // 'urld'  desc
 NSString* const kCorePboardType_urln = @"CorePasteboardFlavorType 0x75726C6E"; // 'urln'  title
+// bug 966986 attachment 8540201
+NSString* const kCorePboardType_text = @"CorePasteboardFlavorType 0x54455854"; // 'TEXT'  text
 NSString* const kUTTypeURLName = @"public.url-name";
+
+// restore bug 966986
+@implementation NSPasteboardWrapper
+- (id)initWithPasteboard:(NSPasteboard*)aPasteboard
+{
+  if ((self = [super init])) {
+    mPasteboard = [aPasteboard retain];
+    mFilenames = nil;
+  }
+  return self;
+}
+
+- (id)propertyListForType:(NSString *)aType
+{
+  if (![aType isEqualToString:NSFilenamesPboardType]) {
+    return [mPasteboard propertyListForType:aType];
+  }
+
+  if (!mFilenames) {
+    mFilenames = [[mPasteboard propertyListForType:aType] retain];
+  }
+
+  return mFilenames;
+}
+
+- (NSPasteboard*) pasteboard
+{
+  return mPasteboard;
+}
+
+- (void)dealloc
+{
+  [mPasteboard release];
+  mPasteboard = nil;
+
+  [mFilenames release];
+  mFilenames = nil;
+
+  [super dealloc];
+}
+@end
 
 nsDragService::nsDragService()
 {
@@ -138,7 +182,7 @@ nsDragService::ConstructDragImage(nsIDOMNode* aDOMNode,
   // Y coordinates are bottom to top, so reverse this
   screenPoint.y = nsCocoaUtils::FlippedScreenY(screenPoint.y);
 
-  CGFloat scaleFactor = nsCocoaUtils::GetBackingScaleFactor(gLastDragView);
+  //CGFloat scaleFactor = nsCocoaUtils::GetBackingScaleFactor(gLastDragView);
 
   RefPtr<SourceSurface> surface;
   nsPresContext* pc;
@@ -148,9 +192,9 @@ nsDragService::ConstructDragImage(nsIDOMNode* aDOMNode,
                          aDragRect, &surface, &pc);
   if (!aDragRect->width || !aDragRect->height) {
     // just use some suitable defaults
-    int32_t size = nsCocoaUtils::CocoaPointsToDevPixels(20, scaleFactor);
-    aDragRect->SetRect(nsCocoaUtils::CocoaPointsToDevPixels(screenPoint.x, scaleFactor),
-                       nsCocoaUtils::CocoaPointsToDevPixels(screenPoint.y, scaleFactor),
+    int32_t size = nsCocoaUtils::CocoaPointsToDevPixels(20);
+    aDragRect->SetRect(nsCocoaUtils::CocoaPointsToDevPixels(screenPoint.x),
+                       nsCocoaUtils::CocoaPointsToDevPixels(screenPoint.y),
                        size, size);
   }
 
@@ -221,8 +265,8 @@ nsDragService::ConstructDragImage(nsIDOMNode* aDOMNode,
   dataSurface->Unmap();
 
   NSImage* image =
-    [[NSImage alloc] initWithSize:NSMakeSize(width / scaleFactor,
-                                             height / scaleFactor)];
+    [[NSImage alloc] initWithSize:NSMakeSize(width,
+                                             height)];
   [image addRepresentation:imageRep];
   [imageRep release];
 
@@ -231,6 +275,8 @@ nsDragService::ConstructDragImage(nsIDOMNode* aDOMNode,
   NS_OBJC_END_TRY_ABORT_BLOCK_NIL;
 }
 
+// Not supported on 10.4
+#if(0)
 bool
 nsDragService::IsValidType(NSString* availableType, bool allowFileURL)
 {
@@ -302,6 +348,7 @@ nsDragService::GetFilePath(NSPasteboardItem* item)
 
   NS_OBJC_END_TRY_ABORT_BLOCK_NIL;
 }
+#endif
 
 // We can only invoke NSView's 'dragImage:at:offset:event:pasteboard:source:slideBack:' from
 // within NSView's 'mouseDown:' or 'mouseDragged:'. Luckily 'mouseDragged' is always on the
@@ -341,8 +388,8 @@ nsDragService::InvokeDragSessionImpl(nsISupportsArray* aTransferableArray,
   }
 
   LayoutDeviceIntPoint pt(dragRect.x, dragRect.YMost());
-  CGFloat scaleFactor = nsCocoaUtils::GetBackingScaleFactor(gLastDragView);
-  NSPoint point = nsCocoaUtils::DevPixelsToCocoaPoints(pt, scaleFactor);
+  //CGFloat scaleFactor = nsCocoaUtils::GetBackingScaleFactor(gLastDragView);
+  NSPoint point = nsCocoaUtils::DevPixelsToCocoaPoints(pt);
   point.y = nsCocoaUtils::FlippedScreenY(point.y);
 
   point = [[gLastDragView window] convertScreenToBase: point];
@@ -436,6 +483,8 @@ nsDragService::GetData(nsITransferable* aTransferable, uint32_t aItemIndex)
 
     MOZ_LOG(sCocoaLog, LogLevel::Info, ("nsDragService::GetData: looking for clipboard data of type %s\n", flavorStr.get()));
 
+// revert bug 966986
+#if(0)
     NSArray* droppedItems = [globalDragPboard pasteboardItems];
     if (!droppedItems) {
       continue;
@@ -450,9 +499,18 @@ nsDragService::GetData(nsITransferable* aTransferable, uint32_t aItemIndex)
     if (!item) {
       continue;
     }
+#endif
 
     if (flavorStr.EqualsLiteral(kFileMime)) {
+#if(0)
       NSString* filePath = GetFilePath(item);
+#else
+      NSArray* pFiles = [globalDragPboard propertyListForType:NSFilenamesPboardType];
+      if (!pFiles || [pFiles count] < (aItemIndex + 1))
+        continue;
+
+      NSString* filePath = [pFiles objectAtIndex:aItemIndex];
+#endif
       if (!filePath)
         continue;
 
@@ -475,6 +533,9 @@ nsDragService::GetData(nsITransferable* aTransferable, uint32_t aItemIndex)
       break;
     }
 
+// backout 966986 and use updated fix from attachment 8540201
+// https://bug966986.bmoattachments.org/attachment.cgi?id=8540201
+#if(0)
     NSString* pString = nil;
     if (flavorStr.EqualsLiteral(kUnicodeMime)) {
       pString = GetStringForType(item, (const NSString*)kUTTypeUTF8PlainText);
@@ -497,6 +558,52 @@ nsDragService::GetData(nsITransferable* aTransferable, uint32_t aItemIndex)
       pString = GetStringForType(item, (const NSString*)kUTTypeRTF);
     }
     if (pString) {
+#else
+     NSString *pboardType = NSStringPboardType;
+ 
+     if (nsClipboard::IsStringType(flavorStr, &pboardType) ||
+         flavorStr.EqualsLiteral(kRTFMime) ||
+         flavorStr.EqualsLiteral(kURLMime) ||
+         flavorStr.EqualsLiteral(kURLDataMime) ||
+         flavorStr.EqualsLiteral(kURLDescriptionMime)) {
+      // The return value of [globalDragPboard stringForType:pboardType]
+      // contains the data of all items, so return the value only if
+      // aItemIndex is 0, and return empty string for others, to avoid
+      // returning duplicated data.
+      NSString* pString;
+      if (aItemIndex == 0) {
+        pString = [[globalDragPboard pasteboard] stringForType:pboardType];
+        if (!pString) {
+          // null is returned in some case, see bug 966986 comment 1.
+          // Try with another type.
+          if (flavorStr.EqualsLiteral(kURLMime))
+            pboardType = kCorePboardType_url;
+          else
+            pboardType = kCorePboardType_text;
+          pString = [[globalDragPboard pasteboard] stringForType:pboardType];
+          if (!pString)
+            continue;
+        }
+
+        if (flavorStr.EqualsLiteral(kURLMime)) {
+          // text/x-moz-url requires the title for each URL,
+          // We don't know which URL corresponds to which file, so
+          // duplicate all lines to make the URL itself as its title.
+          NSArray* lines = [pString componentsSeparatedByString:@"\n"];
+          NSMutableArray* namedLines = [[NSMutableArray alloc] init];
+          for (uint32_t j = 0, lineCount = [lines count]; j < lineCount; j ++) {
+            [namedLines addObject:[lines objectAtIndex:j]];
+            [namedLines addObject:[lines objectAtIndex:j]];
+          }
+          pString = [namedLines componentsJoinedByString:@"\n"];
+          [namedLines release];
+        }
+      }
+      else {
+        pString = @"";
+      }
+#endif
+
       NSData* stringData;
       if (flavorStr.EqualsLiteral(kRTFMime)) {
         stringData = [pString dataUsingEncoding:NSASCIIStringEncoding];
@@ -594,6 +701,8 @@ nsDragService::IsDataFlavorSupported(const char *aDataFlavor, bool *_retval)
     }
   }
 
+// backout bug 966986
+#if(0)
   const NSString* type = nil;
   bool allowFileURL = false;
   if (dataFlavor.EqualsLiteral(kFileMime)) {
@@ -615,6 +724,25 @@ nsDragService::IsDataFlavorSupported(const char *aDataFlavor, bool *_retval)
   if (availableType && IsValidType(availableType, allowFileURL)) {
     *_retval = true;
   }
+#else
+  NSString *pboardType = nil;
+
+  if (dataFlavor.EqualsLiteral(kFileMime)) {
+    NSString* availableType = [[globalDragPboard pasteboard] availableTypeFromArray:[NSArray arrayWithObject:NSFilenamesPboardType]];
+    if (availableType && [availableType isEqualToString:NSFilenamesPboardType])
+      *_retval = true;
+  }
+  else if (dataFlavor.EqualsLiteral(kURLMime)) {
+    NSString* availableType = [[globalDragPboard pasteboard] availableTypeFromArray:[NSArray arrayWithObject:kCorePboardType_url]];
+    if (availableType && [availableType isEqualToString:kCorePboardType_url])
+      *_retval = true;
+  }
+  else if (nsClipboard::IsStringType(dataFlavor, &pboardType)) {
+    NSString* availableType = [[globalDragPboard pasteboard] availableTypeFromArray:[NSArray arrayWithObject:pboardType]];
+    if (availableType && [availableType isEqualToString:pboardType])
+      *_retval = true;
+  }
+#endif
 
   return NS_OK;
 
@@ -634,10 +762,25 @@ nsDragService::GetNumDropItems(uint32_t* aNumItems)
     return NS_OK;
   }
 
+// backout bug 966986
+#if(0)
   NSArray* droppedItems = [globalDragPboard pasteboardItems];
   if (droppedItems) {
     *aNumItems = [droppedItems count];
   }
+#else
+  // if there is a clipboard and there is something on it, then there is at least 1 item
+  NSArray* clipboardTypes = [[globalDragPboard pasteboard] types];
+  if (globalDragPboard && [clipboardTypes count] > 0)
+    *aNumItems = 1;
+  else 
+    return NS_OK;
+  
+  // if there is a list of files, send the number of files in that list
+  NSArray* fileNames = [globalDragPboard propertyListForType:NSFilenamesPboardType];
+  if (fileNames)
+    *aNumItems = [fileNames count];
+#endif
 
   return NS_OK;
 

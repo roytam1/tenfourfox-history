@@ -3229,7 +3229,10 @@ bool AudioDeviceMac::CaptureWorkerThread()
     return true;
 }
 
+inline
 bool AudioDeviceMac::KeyPressed() {
+// This doesn't work properly and hangs up the audio capture thread.
+#if(0)
   bool key_down = false;
   // Loop through all Mac virtual key constant values.
   for (unsigned int key_index = 0;
@@ -3244,5 +3247,8 @@ bool AudioDeviceMac::KeyPressed() {
     prev_key_state_[key_index] = keyState;
   }
   return key_down;
+#else
+  return false;
+#endif
 }
 }  // namespace webrtc

@@ -117,6 +117,11 @@ static RedirEntry kRedirMap[] = {
     nsIAboutModule::ALLOW_SCRIPT
   },
   {
+    "tenfourfox", "chrome://global/content/sluggo.xhtml",
+    nsIAboutModule::URI_SAFE_FOR_UNTRUSTED_CONTENT |
+      nsIAboutModule::HIDE_FROM_ABOUTABOUT
+  },
+  {
     "webrtc", "chrome://global/content/aboutwebrtc/aboutWebrtc.xhtml",
     nsIAboutModule::ALLOW_SCRIPT
   }

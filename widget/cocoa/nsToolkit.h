@@ -47,6 +47,7 @@ protected:
   CFRunLoopSourceRef mSleepWakeNotificationRLS;
   io_object_t        mPowerNotifier;
 
+  EventHandlerRef    mEventMonitorHandler; // 10.4Fx
   CFMachPortRef      mEventTapPort;
   CFRunLoopSourceRef mEventTapRLS;
 };

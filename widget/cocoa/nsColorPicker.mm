@@ -31,7 +31,7 @@ HexStrToInt(NSString* str)
   return result;
 }
 
-@interface NSColorPanelWrapper : NSObject <NSWindowDelegate>
+@interface NSColorPanelWrapper : NSObject /* <NSWindowDelegate> */
 {
   NSColorPanel*  mColorPanel;
   nsColorPicker* mColorPicker;
@@ -136,8 +136,22 @@ nsColorPicker::GetNSColorFromHexString(const nsAString& aColor)
 nsColorPicker::GetHexStringFromNSColor(NSColor* aColor, nsAString& aResult)
 {
   CGFloat redFloat, greenFloat, blueFloat;
+#if(0)
   [aColor getRed: &redFloat green: &greenFloat blue: &blueFloat alpha: nil];
-
+#else
+  NSColor *convertedColour = [aColor
+	colorUsingColorSpaceName:NSCalibratedRGBColorSpace];
+  if (convertedColour)
+    [convertedColour
+	getRed: &redFloat green: &greenFloat blue: &blueFloat alpha: nil];
+  else {
+    redFloat = 1.0f;
+    greenFloat = 1.0f;
+    blueFloat = 1.0f; // panic values
+    fprintf(stderr,
+      "Warning: Colour picker generated bogus colour; assuming white.\n");
+  }
+#endif
   nsCocoaUtils::GetStringForNSString([NSString stringWithFormat:@"#%02x%02x%02x",
                                        (int)(redFloat * 255),
                                        (int)(greenFloat * 255),

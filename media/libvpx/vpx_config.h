@@ -41,6 +41,10 @@
 /* Android */
 #include "vpx_config_armv7-android-gcc.h"
 
+#elif defined(TENFOURFOX_VMX)
+/* Assume TenFourFox, building on OS X. This defines HAVE_ALTIVEC. */
+#include "vpx_config_tenfourfox_altivec.h"
+
 #else
 /* Assume generic GNU/GCC configuration. */
 #include "vpx_config_generic-gnu.h"

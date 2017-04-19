@@ -106,6 +106,7 @@ enum {
 - (void)userNotificationCenter:(id<FakeNSUserNotificationCenter>)center
        didActivateNotification:(id<FakeNSUserNotification>)notification
 {
+#if(0)
   unsigned long long additionalActionIndex = ULLONG_MAX;
   if ([notification respondsToSelector:@selector(_alternateActionIndex)]) {
     NSNumber *alternateActionIndex = [(NSObject*)notification valueForKey:@"_alternateActionIndex"];
@@ -114,6 +115,7 @@ enum {
   mOSXNC->OnActivate([[notification userInfo] valueForKey:@"name"],
                      notification.activationType,
                      additionalActionIndex);
+#endif
 }
 
 - (BOOL)userNotificationCenter:(id<FakeNSUserNotificationCenter>)center
@@ -127,18 +129,22 @@ enum {
 - (void)userNotificationCenter:(id<FakeNSUserNotificationCenter>)center
   didRemoveDeliveredNotifications:(NSArray *)notifications
 {
+#if(0)
   for (id<FakeNSUserNotification> notification in notifications) {
     NSString *name = [[notification userInfo] valueForKey:@"name"];
     mOSXNC->CloseAlertCocoaString(name);
   }
+#endif
 }
 
 // This is an undocumented method that we need to be notified if a user clicks the close button.
 - (void)userNotificationCenter:(id<FakeNSUserNotificationCenter>)center
   didDismissAlert:(id<FakeNSUserNotification>)notification
 {
+#if(0)
   NSString *name = [[notification userInfo] valueForKey:@"name"];
   mOSXNC->CloseAlertCocoaString(name);
+#endif
 }
 
 @end
@@ -299,6 +305,7 @@ OSXNotificationCenter::ShowAlertNotification(const nsAString & aImageUrl, const 
         notification.hasActionButton = YES;
         notification.actionButtonTitle = nsCocoaUtils::ToNSString(actionButtonTitle);
 
+#if(0)
         [(NSObject*)notification setValue:@(YES) forKey:@"_showsButtons"];
         [(NSObject*)notification setValue:@(YES) forKey:@"_alwaysShowAlternateActionMenu"];
         [(NSObject*)notification setValue:@[
@@ -306,6 +313,7 @@ OSXNotificationCenter::ShowAlertNotification(const nsAString & aImageUrl, const 
                                             nsCocoaUtils::ToNSString(settingsButtonTitle)
                                             ]
                                  forKey:@"_alternateActionButtonTitles"];
+#endif
       }
     }
   }
@@ -389,6 +397,7 @@ OSXNotificationCenter::CloseAlertCocoaString(NSString *aAlertName)
   }
 
   NSArray *notifications = [GetNotificationCenter() deliveredNotifications];
+#if(0)
   for (id<FakeNSUserNotification> notification in notifications) {
     NSString *name = [[notification userInfo] valueForKey:@"name"];
     if ([name isEqualToString:aAlertName]) {
@@ -397,6 +406,7 @@ OSXNotificationCenter::CloseAlertCocoaString(NSString *aAlertName)
       break;
     }
   }
+#endif
 
   for (unsigned int i = 0; i < mActiveAlerts.Length(); i++) {
     OSXNotificationInfo *osxni = mActiveAlerts[i];
@@ -514,7 +524,7 @@ OSXNotificationCenter::Notify(imgIRequest *aRequest, int32_t aType, const nsIntR
       nsCOMPtr<imgIContainer> image;
       rv = aRequest->GetImage(getter_AddRefs(image));
       if (NS_SUCCEEDED(rv)) {
-        nsCocoaUtils::CreateNSImageFromImageContainer(image, imgIContainer::FRAME_FIRST, &cocoaImage, 1.0f);
+        nsCocoaUtils::CreateNSImageFromImageContainer(image, imgIContainer::FRAME_FIRST, &cocoaImage);
       }
     }
     (osxni->mPendingNotifiction).contentImage = cocoaImage;

@@ -39,6 +39,7 @@
 #include "cairo.h"
 
 #if CAIRO_HAS_QUARTZ_SURFACE
+#define CGFloat float
 #include "TargetConditionals.h"
 
 #if !TARGET_OS_IPHONE

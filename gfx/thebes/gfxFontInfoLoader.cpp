@@ -132,6 +132,7 @@ gfxFontInfoLoader::ShutdownObserver::Observe(nsISupports *aSubject,
 void
 gfxFontInfoLoader::StartLoader(uint32_t aDelay, uint32_t aInterval)
 {
+return; // We don't implement this yet (see bug 962440).
     mInterval = aInterval;
 
     NS_ASSERTION(!mFontInfo,

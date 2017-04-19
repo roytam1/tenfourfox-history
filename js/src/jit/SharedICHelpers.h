@@ -19,6 +19,8 @@
 # include "jit/mips32/SharedICHelpers-mips32.h"
 #elif defined(JS_CODEGEN_MIPS64)
 # include "jit/mips64/SharedICHelpers-mips64.h"
+#elif defined(JS_CODEGEN_PPC_OSX)
+# include "jit/osxppc/SharedICHelpers-ppc.h"
 #elif defined(JS_CODEGEN_NONE)
 # include "jit/none/SharedICHelpers-none.h"
 #else

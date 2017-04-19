@@ -16,6 +16,8 @@
 #ifdef MOZ_WIDGET_UIKIT
 #include <CoreFoundation/CoreFoundation.h>
 #endif
+#include "../thebes/PhonyCoreText.h"
+#include "nsTArray.h"
 
 #ifdef MOZ_WIDGET_COCOA
 // prototype for private API
@@ -34,6 +36,12 @@ bool ScaledFontMac::sSymbolLookupDone = false;
 ScaledFontMac::ScaledFontMac(CGFontRef aFont, Float aSize)
   : ScaledFontBase(aSize)
 {
+// CTFontDrawGlyphs only exists in 10.7 and up. There is no reason for us
+// to look for it knowing it will fail.
+  mFont = CGFontRetain(aFont);
+  mCTFont = nullptr;
+  CTFontDrawGlyphsPtr = nullptr;
+#if(0)
   if (!sSymbolLookupDone) {
     CTFontDrawGlyphsPtr =
       (CTFontDrawGlyphsFuncT*)dlsym(RTLD_DEFAULT, "CTFontDrawGlyphs");
@@ -48,6 +56,7 @@ ScaledFontMac::ScaledFontMac(CGFontRef aFont, Float aSize)
   } else {
     mCTFont = nullptr;
   }
+#endif
 }
 
 ScaledFontMac::~ScaledFontMac()
@@ -212,6 +221,7 @@ struct writeBuf
 bool
 ScaledFontMac::GetFontFileData(FontFileDataOutput aDataCallback, void *aBaton)
 {
+#if(0)
     // We'll reconstruct a TTF font from the tables we can get from the CGFont
     CFArrayRef tags = CGFontCopyTableTags(mFont);
     CFIndex count = CFArrayGetCount(tags);
@@ -238,6 +248,73 @@ ScaledFontMac::GetFontFileData(FontFileDataOutput aDataCallback, void *aBaton)
         offset = (offset + 3) & ~3;
     }
     CFRelease(tags);
+#else
+    // 10.4 doesn't make this easy the way Mozilla wants it, but we'll try.
+    // Since this is a raw CGFont, we have none of the work we already did.
+    bool CFF = false;
+    AutoFallibleTArray<uint8_t,1024> table;
+    ByteCount sizer = 0;
+
+    // mFont is a CGFont, and ATSUI won't operate on that, so we need to make
+    // it an ATSFontRef first. If this fails, we're dead.
+    CFStringRef psName = ::CGFontCopyPostScriptName(mFont);
+    ATSFontRef fontRef = ::ATSFontFindFromPostScriptName(psName,
+	kATSOptionFlagsDefault);
+    CFRelease(psName);
+    if (!fontRef || fontRef == kInvalidFont ||
+	fontRef == kATSFontRefUnspecified) {
+		NS_WARNING("Failed PostScript lookup");
+		return false;
+    }
+
+    // Next, get the table directory and iterate over it.
+    if(::ATSFontGetTableDirectory(fontRef, 0, nullptr, &sizer) == noErr) {
+      // Sanity check.
+      if (sizer <= 12 || ((sizer-12) % 16) || sizer >= 1024)
+        return false;
+    } else { return false; }
+    table.SetLength(sizer, fallible);
+
+    if (::ATSFontGetTableDirectory(fontRef, sizer,
+      reinterpret_cast<void *>(table.Elements()), &sizer) != noErr)
+        return false;
+    uint32_t count = ((sizer-12) / 16);
+    uint32_t offset = (uint32_t)sizer;
+    uint32_t *wtable = (reinterpret_cast<uint32_t *>(table.Elements()));
+    TableRecord *records = new TableRecord[count];
+    for (uint32_t i=3; i<(sizer/4); i+=4) { // Skip header
+#ifndef __ppc__
+#error need little-endian version
+#endif
+        uint32_t tag = wtable[i];
+        if (tag == 0x43464620) // 'CFF '
+            CFF = true;
+        // We know the length from the directory, so we can simply import
+        // the data. We assume the table exists, and OMG if it doesn't.
+	// This is the equivalent for CGFontCopyTableForTag().
+        records[i].tag = tag;
+        records[i].offset = offset;
+	ByteCount dataLength = (ByteCount)wtable[i+3];
+	CFMutableDataRef data = ::CFDataCreateMutable(kCFAllocatorDefault,
+		dataLength);
+	if (!data) return false;
+	::CFDataIncreaseLength(data, dataLength); // paranoia
+	if(::ATSFontGetTable(fontRef, tag, 0, dataLength,
+		::CFDataGetMutableBytePtr(data), &dataLength) != noErr) {
+		CFRelease(data);
+		return false;
+	}
+        records[i].data = data;
+        records[i].length = (uint32_t)dataLength;
+        bool skipChecksumAdjust = (tag == 0x68656164); // 'head'
+        records[i].checkSum = CalcTableChecksum(
+		reinterpret_cast<const uint32_t*>(CFDataGetBytePtr(data)),
+                records[i].length, skipChecksumAdjust);
+        offset += records[i].length;
+        // 32 bit align the tables
+        offset = (offset + 3) & ~3;
+    }
+#endif
 
     struct writeBuf buf(offset);
     // write header/offset table

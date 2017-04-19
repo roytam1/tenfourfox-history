@@ -529,6 +529,19 @@ elif CONFIG['JS_CODEGEN_MIPS32'] or CONFIG['JS_CODEGEN_MIPS64']:
             UNIFIED_SOURCES += [
                 'jit/mips64/Simulator-mips64.cpp'
             ]
+elif CONFIG['JS_CODEGEN_PPC_OSX']:
+    SOURCES += [
+        'jit/osxppc/Architecture-ppc.cpp',
+        'jit/osxppc/Assembler-ppc.cpp',
+        'jit/osxppc/Bailouts-ppc.cpp',
+        'jit/osxppc/BaselineCompiler-ppc.cpp',
+        'jit/osxppc/BaselineIC-ppc.cpp',
+        'jit/osxppc/CodeGenerator-ppc.cpp',
+        'jit/osxppc/Lowering-ppc.cpp',
+        'jit/osxppc/MacroAssembler-ppc.cpp',
+        'jit/osxppc/MoveEmitter-ppc.cpp',
+        'jit/osxppc/Trampoline-ppc.cpp',
+    ]
 
 if CONFIG['OS_ARCH'] == 'WINNT':
     # _CRT_RAND_S must be #defined before #including stdlib.h to get rand_s()

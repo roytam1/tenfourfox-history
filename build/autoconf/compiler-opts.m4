@@ -45,8 +45,9 @@ case "$target" in
         HOST_LDFLAGS=" "
     fi
     ;;
-*-darwin*)
+*-darwincomestojesus*)
     # GCC on darwin is based on gcc 4.2 and we don't support it anymore.
+    # Hah! Just kidding!
     if test -z "$CC"; then
         MOZ_PATH_PROGS(CC, clang)
     fi
@@ -102,7 +103,7 @@ if test -z "$MOZ_DEBUG_FLAGS"; then
   if test -n "$_MSC_VER"; then
     MOZ_DEBUG_FLAGS="-Zi"
   else
-    MOZ_DEBUG_FLAGS="-g"
+    MOZ_DEBUG_FLAGS="-gdwarf-2"
   fi
 fi
 

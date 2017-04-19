@@ -228,6 +228,9 @@ def bootstrap(topsrcdir, mozilla_dir=None):
         tools are up to date.
         """
         # Don't do anything when...
+        
+        # The user is building TenFourFox. Up yours.
+        return
 
         # The user is performing a maintenance command.
         if handler.name in ('bootstrap', 'doctor', 'mach-commands', 'mercurial-setup'):

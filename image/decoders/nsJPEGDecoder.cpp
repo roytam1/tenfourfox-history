@@ -25,10 +25,12 @@ extern "C" {
 #include "iccjpeg.h"
 }
 
+#if defined(JCS_EXTENSIONS)
 #if MOZ_BIG_ENDIAN
 #define MOZ_JCS_EXT_NATIVE_ENDIAN_XRGB JCS_EXT_XRGB
 #else
 #define MOZ_JCS_EXT_NATIVE_ENDIAN_XRGB JCS_EXT_BGRX
+#endif
 #endif
 
 static void cmyk_convert_rgb(JSAMPROW row, JDIMENSION width);
@@ -339,14 +341,18 @@ nsJPEGDecoder::WriteInternal(const char* aBuffer, uint32_t aCount)
         case JCS_GRAYSCALE:
         case JCS_RGB:
         case JCS_YCbCr:
+#if defined(JCS_EXTENSIONS)
           // if we're not color managing we can decode directly to
           // MOZ_JCS_EXT_NATIVE_ENDIAN_XRGB
           if (mCMSMode != eCMSMode_All) {
               mInfo.out_color_space = MOZ_JCS_EXT_NATIVE_ENDIAN_XRGB;
               mInfo.out_color_components = 4;
           } else {
+#endif
               mInfo.out_color_space = JCS_RGB;
+#if defined(JCS_EXTENSIONS)
           }
+#endif
           break;
         case JCS_CMYK:
         case JCS_YCCK:
@@ -601,6 +607,7 @@ nsJPEGDecoder::OutputScanlines(bool* suspend)
 
       MOZ_ASSERT(imageRow, "Should have a row buffer here");
 
+#if defined(JCS_EXTENSIONS)
       if (mInfo.out_color_space == MOZ_JCS_EXT_NATIVE_ENDIAN_XRGB) {
         // Special case: scanline will be directly converted into packed ARGB
         if (jpeg_read_scanlines(&mInfo, (JSAMPARRAY)&imageRow, 1) != 1) {
@@ -612,6 +619,7 @@ nsJPEGDecoder::OutputScanlines(bool* suspend)
         }
         continue; // all done for this row!
       }
+#endif
 
       JSAMPROW sampleRow = (JSAMPROW)imageRow;
       if (mInfo.output_components == 3) {

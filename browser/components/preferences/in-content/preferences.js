@@ -53,6 +53,7 @@ function init_all() {
   register_module("paneContent", gContentPane);
   register_module("paneSync", gSyncPane);
   register_module("paneSecurity", gSecurityPane);
+  register_module("paneTenFourFox", gTenFourFoxPane);
 
   let categories = document.getElementById("categories");
   categories.addEventListener("select", event => gotoPref(event.target.value));

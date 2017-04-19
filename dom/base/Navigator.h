@@ -212,6 +212,10 @@ public:
   {
     aRv = GetBuildID(aBuildID);
   }
+  void GetIsTenFourFox(nsString& aOurFavouriteBrowser, ErrorResult& aRv)
+  {
+    aRv = GetIsTenFourFox(aOurFavouriteBrowser);
+  }
   PowerManager* GetMozPower(ErrorResult& aRv);
   bool JavaEnabled(ErrorResult& aRv);
   bool TaintEnabled()

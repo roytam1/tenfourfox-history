@@ -99,7 +99,7 @@ const CACHE_INVALIDATION_DELAY = 1000;
 // file is modified.
 const CACHE_VERSION = 1;
 
-const CACHE_FILENAME = "search.json.mozlz4";
+const CACHE_FILENAME = "search.json";
 
 const ICON_DATAURL_PREFIX = "data:image/x-icon;base64,";
 
@@ -2876,7 +2876,7 @@ SearchService.prototype = {
       LOG("_buildCache: Writing to cache file.");
       let path = OS.Path.join(OS.Constants.Path.profileDir, CACHE_FILENAME);
       let data = gEncoder.encode(JSON.stringify(cache));
-      let promise = OS.File.writeAtomic(path, data, {compression: "lz4",
+      let promise = OS.File.writeAtomic(path, data, { /* compression: "lz4", */
                                                      tmpPath: path + ".tmp"});
 
       promise.then(
@@ -3246,7 +3246,7 @@ SearchService.prototype = {
       let json;
       try {
         let cacheFilePath = OS.Path.join(OS.Constants.Path.profileDir, CACHE_FILENAME);
-        let bytes = yield OS.File.read(cacheFilePath, {compression: "lz4"});
+        let bytes = yield OS.File.read(cacheFilePath /*, {compression: "lz4"} */);
         json = JSON.parse(new TextDecoder().decode(bytes));
         if (!json.engines || !json.engines.length)
           throw "no engine in the file";

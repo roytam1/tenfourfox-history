@@ -35,10 +35,24 @@ const ONE_MINUS_EPSILON = 1 - Math.pow(2, -53);  // 1.0000000000000002
     //
     var f = new Float64Array([0, 0]);
     var u = new Uint32Array(f.buffer);
+// TenFourFox's hybrid typed arrays take native floats, but byteswap
+// ints, so we'll manipulate this to give us the old endianness.
+// Essentially we have to byteswap each 32-bit half of the 64-bit double.
+var swap32 = function(val) {
+    return ((val & 0xFF) << 24)
+           | ((val & 0xFF00) << 8)
+           | ((val >> 8) & 0xFF00)
+           | ((val >> 24) & 0xFF);
+};
     var diff = function (a, b) {
         f[0] = a;
         f[1] = b;
-        //print(u[1].toString(16) + u[0].toString(16) + " " + u[3].toString(16) + u[2].toString(16));
+	u[0] = swap32(u[0]);
+	u[1] = swap32(u[1]);
+	u[2] = swap32(u[2]);
+	u[3] = swap32(u[3]);
+        //print(u[1].toString(16) + " " + u[0].toString(16) + "/" + u[3].toString(16) + " " +u[2].toString(16));
+        //print(Math.abs((u[3-ENDIAN] - u[1-ENDIAN]) * 0x100000000 + u[2+ENDIAN] - u[0+ENDIAN]));
         return Math.abs((u[3-ENDIAN] - u[1-ENDIAN]) * 0x100000000 + u[2+ENDIAN] - u[0+ENDIAN]);
     };
 

@@ -109,11 +109,7 @@ this.AppConstants = Object.freeze({
 #endif
 
   MOZ_UPDATER:
-#ifdef MOZ_UPDATER
-  true,
-#else
   false,
-#endif
 
   MOZ_SWITCHBOARD:
 #ifdef MOZ_SWITCHBOARD
